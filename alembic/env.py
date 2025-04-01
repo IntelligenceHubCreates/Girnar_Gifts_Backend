@@ -7,6 +7,9 @@ from alembic import context
 
 from app.users import models as user_models
 from app.products import models as product_models
+from app.rating import models as rating_models
+from app.favorite import models as favorite_models
+from app.orders import models as orders_models
 from app.models import Base
 
 # this is the Alembic Config object, which provides

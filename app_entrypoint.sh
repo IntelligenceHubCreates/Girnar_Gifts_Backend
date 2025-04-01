@@ -6,21 +6,21 @@
 # Run Alembic migrations
 alembic upgrade head
 
-export PGPASSWORD=silveenewpassword
+export PGPASSWORD=silveesilver
 
 # Check if the record exists in the database
 RECORD_CHECK_QUERY="SELECT * FROM users WHERE id = 1;"
-RECORD_INSERT_QUERY="INSERT INTO users (id, email, confirmed, hashed_password, role) VALUES (1, 'qualityagency79@gmail.com', true, '\$2b\$12\$cJBilV25TGMT31YgLXAk7e1.r9RHrm/UXLFqjzYuiD1E.blSecbuq', 1);"  #mynewbackendtestedis
+RECORD_INSERT_QUERY="INSERT INTO users (email, confirmed, hashed_password, role) VALUES ('qualityagency79@gmail.com', true, '\$2b\$12\$cJBilV25TGMT31YgLXAk7e1.r9RHrm/UXLFqjzYuiD1E.blSecbuq', 1);"  #mynewbackendtestedis
 
 # Use psql to connect to PostgreSQL and check for the record
-RECORD_EXISTS=$(psql -h db -U postgres -d app -t -c "$RECORD_CHECK_QUERY")
+RECORD_EXISTS=$(psql -h db -U silvee -d silverdatabase -t -c "$RECORD_CHECK_QUERY")
 
 # If the record doesn't exist, insert it
 # echo "Inserting initial record into the database..."
 # psql -h db -U postgres -d app -c "$RECORD_INSERT_QUERY"
 if [ -z "$RECORD_EXISTS" ]; then
     echo "Inserting initial record into the database..."
-    psql -h db -U postgres -d app -c "$RECORD_INSERT_QUERY"
+    psql -h db -U silvee -d silverdatabase -c "$RECORD_INSERT_QUERY"
 else
     echo "Record already exists, skipping insert."
 fi

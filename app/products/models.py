@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from app.models import Base
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date
+from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, text
 from pydantic import BaseModel
 from typing import Optional
 
@@ -10,7 +10,8 @@ from typing import Optional
 class Product(Base):
     __tablename__ = "products"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text('gen_random_uuid()'), index=True)
+    uid = Column(UUID(as_uuid=True), primary_key=True, server_default=text('gen_random_uuid()'), index=True)
     name = Column(String(100), nullable=False, index=True)
     category = Column(String(30), index=True)
     original_price = Column(DECIMAL(20, 2), nullable=False)
