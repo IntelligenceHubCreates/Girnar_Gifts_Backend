@@ -67,7 +67,7 @@ def decodeJWT(jwtoken: str):
         payload = jwt.decode(jwtoken, JWT_SECRET_KEY, ALGORITHM)
         print("PPO", payload)
         if(payload):
-            print("Entered")
+            print("Entered", payload)
             user = get_user_by_id(payload['sub'])
             print("TYe", user)
             if user:

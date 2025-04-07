@@ -28,6 +28,5 @@ services:
       - "9432:5432"
     volumes:
     # Store the db data on the host machine, not inside the container.
-    # Put a better path than /tmp!
       - ./ecommerce/postgresql:/var/lib/postgresqlnew
       - ./ecommerce/postgresql/data:/var/lib/postgresqlnew/data

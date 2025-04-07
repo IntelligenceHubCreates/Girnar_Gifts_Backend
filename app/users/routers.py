@@ -49,3 +49,26 @@ def login(request: requestdetails, response: Response, db: Session = Depends(get
     return {
         "Message": "Successfully Logged In",
     }
+
+# @router.get('/')
+# def get_users(response: Response, db: Session = Depends(get_db)):
+#     user = db.query(Users).all()
+#     # if user is None:
+#     #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect email")
+#     # hashed_pass = user.hashed_password
+#     # if not verify_password(request.password, hashed_pass):
+#     #     raise HTTPException(
+#     #         status_code=status.HTTP_400_BAD_REQUEST,
+#     #         detail="Incorrect password"
+#     #     )
+    
+#     # access = create_access_token(user.id, db)
+
+#     # response.set_cookie(key=COOKIE_ACCESS_KEY, value=access, httponly=True, samesite="strict")
+
+#     print("Test", response)
+
+#     return {
+#         "Message": "Successfully Logged In",
+#         "First User": user
+#     }

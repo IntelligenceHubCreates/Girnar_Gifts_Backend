@@ -1,6 +1,7 @@
 import datetime
 from typing import List
-from app.products.models import Product, ProductBase, ProductIn
+from uuid import UUID
+from app.products.models import Product, ProductBase, ProductIn, ProductListResponse
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.settings import settings
@@ -94,7 +95,9 @@ async def add_new_product(
     productPrice: int = Form(...),
     productCount: int = Form(...),
     productDiscount: int = Form(...),
+    productDiscountAmount: int = Form(...),
     productImages: List[UploadFile] = File(...),
+    productDetails: List[str] = File(...),
     user = Depends(JWTBearer()),
     session: Session = Depends(get_db)
 ):
@@ -112,20 +115,21 @@ async def add_new_product(
             "offer_expiration_date": datetime.datetime(1970, 1, 1),
             "product_image": images,
             "count": productCount,
-            "description": productDescription
+            "description": productDescription,
+            "details": productDetails,
+            "amount_discount": productDiscountAmount
         }
 
         if product_data["original_price"] > 0:
-            # product_data["percentage_discount"] = (
-            #     (product_data["original_price"]) / product_data["original_price"]) * 100
-
-            # Create and save new product in the database
             new_product = Product(**product_data)
             session.add(new_product)
             session.commit()
             session.refresh(new_product)
 
-            return ProductBase.from_orm(new_product)
+            return ProductBase.from_orm(
+                new_product if not isinstance(new_product.id, UUID) else new_product.__dict__ | {"id": str(new_product.id)}
+            )
+
 
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -136,9 +140,9 @@ async def add_new_product(
                             detail=f"Something happend ${e}")
 
 
-@router.delete("/products/{id}", tags=["Product"], status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", tags=["Product"])
 async def delete_product(
-    id: int, 
+    id: str, 
     user = Depends(JWTBearer()),
     session: Session = Depends(get_db)
 ):
@@ -153,7 +157,7 @@ async def delete_product(
 
     session.delete(product)
     session.commit()
-    return
+    return {"Message": "Deleted Successfully"}
 
 @router.put("/products/{id}", tags=["Product"])
 async def update_product(
@@ -171,9 +175,19 @@ async def update_product(
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
-    updated_data = updated_product.dict(exclude_unset=True)
-    # updated_data["percentage_discount"] = (
-    #     (updated_data["original_price"]) / updated_data["original_price"]) * 100
+    new_product = updated_product.dict(exclude_unset=True)
+
+    updated_data = {
+        "original_price": new_product["productPrice"], 
+        "percentage_discount": new_product["productDiscount"],
+        "name": new_product["productName"],
+        "category": new_product["productCategory"],
+        "product_image": new_product["images"],
+        "count": new_product["productCount"],
+        "description": new_product["productDescription"],
+        "details": new_product["productDetails"],
+        "amount_discount": new_product["productDiscountAmount"]
+    }
 
     if updated_data["original_price"] > 0:
         for key, value in updated_data.items():
@@ -190,17 +204,24 @@ async def update_product(
         headers={"WWW-Authenticate": "Bearer"}
     )
 
-@router.get("/products", tags=["Product"], response_model=List[ProductBase])
+@router.get("/all", tags=["Product"], response_model=ProductListResponse)
 async def get_product_list(limit: int = Query(100, le=100),
                            skip: int = Query(0, ge=0),
                            session: Session = Depends(get_db)):
 
     products = session.query(Product).offset(skip).limit(limit).all()
-    return [ProductBase.from_orm(product) for product in products]
-
+    return {
+        "data": [
+            ProductBase.from_orm(
+                product if not isinstance(product.id, UUID) else product.__dict__ | {"id": str(product.id)}
+            )
+            for product in products
+        ],
+        "totalCount": len(products),
+    }
 
 @router.get("/products/{id}", tags=["Product"])
-async def get_product_detail(id: int, session: Session = Depends(get_db)):
+async def get_product_detail(id: str, session: Session = Depends(get_db)):
     product = session.query(Product).filter(Product.id == id).first()
 
     if not product:
