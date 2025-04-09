@@ -1,4 +1,5 @@
 import datetime
+import json
 from typing import List
 from uuid import UUID
 from app.products.models import Product, ProductBase, ProductIn, ProductListResponse
@@ -159,10 +160,19 @@ async def delete_product(
     session.commit()
     return {"Message": "Deleted Successfully"}
 
-@router.put("/products/{id}", tags=["Product"])
+@router.put("/{id}", tags=["Product"])
 async def update_product(
-    id: int,
-    updated_product: ProductIn,
+    id: str,
+    productName: str = Form(...),
+    productCategory: str = Form(...),
+    productDescription: str = Form(...),
+    productPrice: int = Form(...),
+    productCount: int = Form(...),
+    productDiscount: int = Form(...),
+    productDiscountAmount: int = Form(...),
+    productImages: List[UploadFile] = File(...),
+    productDetails: List[str] = Form(...),
+    oldProductImages = Form(...),
     user=Depends(JWTBearer()),
     session: Session = Depends(get_db)
 ):
@@ -174,19 +184,23 @@ async def update_product(
 
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    
+    file_contents = json.loads(oldProductImages)
 
-    new_product = updated_product.dict(exclude_unset=True)
+    images = await upload_images(productImages)
+
+    images.extend(file_contents or [])
 
     updated_data = {
-        "original_price": new_product["productPrice"], 
-        "percentage_discount": new_product["productDiscount"],
-        "name": new_product["productName"],
-        "category": new_product["productCategory"],
-        "product_image": new_product["images"],
-        "count": new_product["productCount"],
-        "description": new_product["productDescription"],
-        "details": new_product["productDetails"],
-        "amount_discount": new_product["productDiscountAmount"]
+        "original_price": productPrice, 
+        "percentage_discount": productDiscount,
+        "name": productName,
+        "category": productCategory,
+        "product_image": images,
+        "count": productCount,
+        "description": productDescription,
+        "details": productDetails,
+        "amount_discount": productDiscountAmount
     }
 
     if updated_data["original_price"] > 0:
@@ -196,7 +210,9 @@ async def update_product(
         session.commit()
         session.refresh(product)
 
-        return ProductBase.from_orm(product)
+        product_data = product.__dict__
+        product_data["id"] = str(product_data["id"])
+        return product_data
 
     raise HTTPException(
         status_code=status.HTTP_400_UNAUTHORIZED,
@@ -220,15 +236,21 @@ async def get_product_list(limit: int = Query(100, le=100),
         "totalCount": len(products),
     }
 
-@router.get("/products/{id}", tags=["Product"])
+@router.get("/{id}", tags=["Product"])
 async def get_product_detail(id: str, session: Session = Depends(get_db)):
-    product = session.query(Product).filter(Product.id == id).first()
+    print("Effort", id)
+    product = session.query(Product).filter(Product.id == UUID(id)).first()
+    print("JOSH", product)
 
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    
+    print("Bye", product.__dir__())
+    print("Bye12121", product.__dict__)
 
-    product_data = ProductBase.from_orm(product).dict()
-    product_data["product_image"] = f'{product_data["product_image"]}'
+    product_data = product.__dict__
+    # product_data["product_image"] = f'{product_data["product_image"]}'
+    product_data["id"] = str(product_data["id"])
 
     return {
         "product_details": product_data,
