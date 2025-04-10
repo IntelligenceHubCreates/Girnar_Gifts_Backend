@@ -170,7 +170,7 @@ async def update_product(
     productCount: int = Form(...),
     productDiscount: int = Form(...),
     productDiscountAmount: int = Form(...),
-    productImages: List[UploadFile] = File(...),
+    productImages: List[UploadFile] = File(None),
     productDetails: List[str] = Form(...),
     oldProductImages = Form(...),
     user=Depends(JWTBearer()),
@@ -186,6 +186,9 @@ async def update_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     
     file_contents = json.loads(oldProductImages)
+
+    if not productImages:
+        productImages = []
 
     images = await upload_images(productImages)
 
