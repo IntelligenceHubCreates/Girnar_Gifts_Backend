@@ -5,6 +5,8 @@ from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from typing import List
+from app.users.models import Users
+from app.products.models import Product
 
 class Order(Base):
     __tablename__ = "orders"
@@ -14,7 +16,8 @@ class Order(Base):
     order_date = Column(DateTime, default=datetime.utcnow)
     total_amount = Column(DECIMAL(20, 2), nullable=False)
     status = Column(String(50), nullable=False)
-    user = relationship("User", back_populates="orders")
+    shipping_address = Column(String(500), nullable=False)
+    user = relationship("Users", back_populates="orders")
     order_items = relationship("OrderItem", back_populates="order")
 
 class OrderItem(Base):

@@ -71,13 +71,36 @@ def decodeJWT(jwtoken: str):
             user = get_user_by_id(payload['sub'])
             print("TYe", user)
             if user:
-                return {'email': user.email, 'id': user.id, 'role': user.role, 'confirmed': user.confirmed, 'created_at': user.created_at}
+                return {
+                    'email': user.email, 
+                    'id': user.id, 
+                    'role': user.role, 
+                    'confirmed': user.confirmed, 
+                    'created_at': user.created_at,
+                    "name": user.name,
+                    "phone": user.phone,
+                    "address": user.addresses
+                }
             return None
         return None
     except Exception as e:
         print("TTTT", e)
         return None
 
+async def get_current_user(request: Request, db: Session):
+    try:
+        token = request.cookies.get(COOKIE_ACCESS_KEY)
+        if not token:
+            return None
+        
+        payload = decodeJWT(token)
+        if not payload:
+            return None
+            
+        return payload
+    except Exception as e:
+        print(f"Error getting current user: {str(e)}")
+        return None
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):

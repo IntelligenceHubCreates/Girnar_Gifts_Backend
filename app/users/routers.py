@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from sqlalchemy.orm import Session
 from app import models
 from app.db import SessionLocal, get_db
 from app.users.models import UserTokens, Users
 from app.users.schemas import TokenSchema, UserCreate, requestdetails
-from app.users.utils import COOKIE_ACCESS_KEY, create_access_token, get_hashed_password, verify_password
+from app.users.utils import COOKIE_ACCESS_KEY, create_access_token, get_hashed_password, verify_password, get_current_user
 
 router = APIRouter(prefix= '/api/user')
 
@@ -49,6 +49,28 @@ def login(request: requestdetails, response: Response, db: Session = Depends(get
     return {
         "Message": "Successfully Logged In",
     }
+
+@router.get('/profile')
+async def get_profile(request: Request, db: Session = Depends(get_db)):
+    try:
+        user = await get_current_user(request, db)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated"
+            )
+        
+        return {
+            "email": user.get("email", ''),
+            "name": user.get("name", '') or '',
+            "phone": user.get("phone", '') or '', 
+            "address": user.get("address", '') or ''
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 # @router.get('/')
 # def get_users(response: Response, db: Session = Depends(get_db)):

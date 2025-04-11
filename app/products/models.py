@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSON
 from app.models import Base
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, text
+from sqlalchemy.orm import relationship
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -24,6 +25,7 @@ class Product(Base):
     product_image = Column(JSON, nullable=False, default=[]) 
     date_published = Column(DateTime, default=datetime.utcnow)
     details = Column(ARRAY(String), nullable=True)
+    order_items = relationship("OrderItem", back_populates="product")
 
 # Pydantic schemas
 class ProductBase(BaseModel):
