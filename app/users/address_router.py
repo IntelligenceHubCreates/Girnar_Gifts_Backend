@@ -1,204 +1,110 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
+
 from app.db import get_db
+from app.users.utils import JWTBearer
 from app.users.models import UserAddress
-from app.users.utils import get_current_user
-from pydantic import BaseModel
-from typing import List, Optional
-import uuid
+from app.users.schemas import AddressCreate, AddressResponse
+from app.users.services import create_address, get_user_addresses, get_address, update_address, delete_address
 
-router = APIRouter(prefix='/api/user/addresses')
+router = APIRouter(prefix="/api/address", tags=["address"])
 
-class AddressBase(BaseModel):
-    address_line1: str
-    address_line2: Optional[str] = None
-    city: str
-    state: str
-    postal_code: str
-    country: str
-    is_default: bool = False
-
-    class Config:
-        from_attributes = True
-
-class AddressCreate(AddressBase):
-    pass
-
-class AddressResponse(AddressBase):
-    id: str
-    user_id: str
-    created_at: str
-
-    class Config:
-        from_attributes = True
-
-@router.post("/", response_model=AddressResponse)
-async def create_address(
+@router.post("/addresses/", response_model=AddressResponse)
+async def create_user_address(
     address: AddressCreate,
-    request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: str = Depends(JWTBearer())
 ):
+    """Create a new address for the current user"""
     try:
-        user = await get_current_user(request, db)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated"
-            )
-
-        # If this is set as default, unset all other defaults
-        if address.is_default:
-            db.query(UserAddress).filter(
-                UserAddress.user_id == user.id,
-                UserAddress.is_default == True
-            ).update({"is_default": False})
-
-        new_address = UserAddress(
-            id=uuid.uuid4(),
-            user_id=user.id,
-            **address.dict()
-        )
-        db.add(new_address)
-        db.commit()
-        db.refresh(new_address)
-        return new_address
+        return create_address(db, address, token)
     except Exception as e:
-        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-@router.get("/", response_model=List[AddressResponse])
+@router.get("/addresses/", response_model=List[AddressResponse])
 async def get_addresses(
-    request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: str = Depends(JWTBearer())
 ):
+    """Get all addresses for the current user"""
     try:
-        user = await get_current_user(request, db)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated"
-            )
-        
-        addresses = db.query(UserAddress).filter(UserAddress.user_id == user.id).all()
-        return addresses
+        return get_user_addresses(db, token)
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-@router.get("/{address_id}", response_model=AddressResponse)
-async def get_address(
+@router.get("/addresses/{address_id}", response_model=AddressResponse)
+async def get_address_by_id(
     address_id: str,
-    request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: str = Depends(JWTBearer())
 ):
+    """Get a specific address by ID"""
     try:
-        user = await get_current_user(request, db)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated"
-            )
-        
-        address = db.query(UserAddress).filter(
-            UserAddress.id == address_id,
-            UserAddress.user_id == user.id
-        ).first()
-        
+        address = get_address(db, address_id, token)
         if not address:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Address not found"
             )
         return address
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-@router.put("/{address_id}", response_model=AddressResponse)
-async def update_address(
+@router.put("/addresses/{address_id}", response_model=AddressResponse)
+async def update_user_address(
     address_id: str,
     address: AddressCreate,
-    request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: str = Depends(JWTBearer())
 ):
+    """Update an existing address"""
     try:
-        user = await get_current_user(request, db)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated"
-            )
-
-        # If this is set as default, unset all other defaults
-        if address.is_default:
-            db.query(UserAddress).filter(
-                UserAddress.user_id == user.id,
-                UserAddress.is_default == True,
-                UserAddress.id != address_id
-            ).update({"is_default": False})
-
-        db.query(UserAddress).filter(
-            UserAddress.id == address_id,
-            UserAddress.user_id == user.id
-        ).update(address.dict())
-        
-        db.commit()
-        updated_address = db.query(UserAddress).filter(
-            UserAddress.id == address_id,
-            UserAddress.user_id == user.id
-        ).first()
-        
+        updated_address = update_address(db, address_id, address, token)
         if not updated_address:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Address not found"
             )
         return updated_address
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-@router.delete("/{address_id}")
-async def delete_address(
+@router.delete("/addresses/{address_id}")
+async def delete_user_address(
     address_id: str,
-    request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: str = Depends(JWTBearer())
 ):
+    """Delete an address"""
     try:
-        user = await get_current_user(request, db)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated"
-            )
-        
-        address = db.query(UserAddress).filter(
-            UserAddress.id == address_id,
-            UserAddress.user_id == user.id
-        ).first()
-        
-        if not address:
+        success = delete_address(db, address_id, token)
+        if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Address not found"
             )
-        
-        db.delete(address)
-        db.commit()
         return {"message": "Address deleted successfully"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         ) 

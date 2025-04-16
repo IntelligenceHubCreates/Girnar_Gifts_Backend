@@ -5,13 +5,12 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Union, Any
 from jose import jwt
-from app.users.services import get_user_by_id
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import delete
 
-from app.users.models import UserBase, UserTokens
+from app.users.models import Users
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 4320
 ALGORITHM = "HS256"
@@ -22,12 +21,10 @@ COOKIE_ACCESS_KEY = 'user_session'
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def get_hashed_password(password: str) -> str:
-    return password_context.hash(password)
+def get_user_by_id(db: Session, user_id: str) -> Users:
+    """Get user by ID"""
+    return db.query(Users).filter(Users.id == user_id).first()
 
-
-def verify_password(password: str, hashed_pass: str) -> bool:
-    return password_context.verify(password, hashed_pass)
 
 def create_access_token(subject: Union[str, Any], session: Session, expires_delta: int = None) -> str:
     if expires_delta is not None:

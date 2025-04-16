@@ -1,10 +1,11 @@
+from app.users.services import get_hashed_password, verify_password
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from sqlalchemy.orm import Session
 from app import models
 from app.db import SessionLocal, get_db
 from app.users.models import UserTokens, Users
 from app.users.schemas import TokenSchema, UserCreate, requestdetails
-from app.users.utils import COOKIE_ACCESS_KEY, create_access_token, get_hashed_password, verify_password, get_current_user
+from app.users.utils import COOKIE_ACCESS_KEY, create_access_token, get_current_user
 
 router = APIRouter(prefix= '/api/user')
 

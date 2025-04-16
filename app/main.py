@@ -12,7 +12,7 @@ from app.db import SessionLocal, engine, get_db, init_db
 from app.schemas import Greeting
 from app.users import models as user_models
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+# from fastapi.staticfiles import StaticFiles
 from app.models import Base
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -29,8 +29,8 @@ server.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-server.mount("/static", StaticFiles(directory="static"), name="static")
+# # Mount static files
+# server.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
 server.include_router(user_router)

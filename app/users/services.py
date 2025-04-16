@@ -1,10 +1,18 @@
 from datetime import datetime
 from typing import List
-from app.users.utils import get_hashed_password
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 
 from app.users.models import Users, UserAddress
 from app.users.schemas import UserCreate, UserResponse, AddressCreate, AddressResponse, ProfileUpdate
+
+password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_hashed_password(password: str) -> str:
+    return password_context.hash(password)
+
+def verify_password(password: str, hashed_pass: str) -> bool:
+    return password_context.verify(password, hashed_pass)
 
 def create_user(db: Session, user: UserCreate) -> Users:
     """Create a new user"""
@@ -28,10 +36,6 @@ def get_user_by_email(db: Session, email: str) -> Users:
     """Get user by email"""
     return db.query(Users).filter(Users.email == email).first()
 
-def get_user_by_id(db: Session, user_id: str) -> Users:
-    """Get user by ID"""
-    return db.query(Users).filter(Users.id == user_id).first()
-
 def update_user_profile(db: Session, user: Users, profile: ProfileUpdate) -> Users:
     """Update user profile"""
     try:
@@ -45,9 +49,17 @@ def update_user_profile(db: Session, user: Users, profile: ProfileUpdate) -> Use
         db.rollback()
         raise e
 
-def create_user_address(db: Session, user_id: str, address: AddressCreate) -> UserAddress:
+def create_address(db: Session, address: AddressCreate, token: str) -> UserAddress:
     """Create a new address for user"""
     try:
+        # Get user ID from token
+        from app.users.utils import decodeJWT
+        payload = decodeJWT(token)
+        if not payload or 'sub' not in payload:
+            raise Exception("Invalid token")
+        
+        user_id = payload['sub']
+        
         if address.is_default:
             # Reset all other addresses to non-default
             db.query(UserAddress).filter(
@@ -67,26 +79,50 @@ def create_user_address(db: Session, user_id: str, address: AddressCreate) -> Us
         db.rollback()
         raise e
 
-def get_user_addresses(db: Session, user_id: str) -> List[UserAddress]:
+def get_user_addresses(db: Session, token: str) -> List[UserAddress]:
     """Get all addresses for user"""
-    return db.query(UserAddress).filter(UserAddress.user_id == user_id).all()
+    try:
+        from app.users.utils import decodeJWT
+        payload = decodeJWT(token)
+        if not payload or 'sub' not in payload:
+            raise Exception("Invalid token")
+        
+        user_id = payload['sub']
+        return db.query(UserAddress).filter(UserAddress.user_id == user_id).all()
+    except Exception as e:
+        raise e
 
-def get_user_address(db: Session, user_id: str, address_id: str) -> UserAddress:
+def get_address(db: Session, address_id: str, token: str) -> UserAddress:
     """Get specific address for user"""
-    return db.query(UserAddress).filter(
-        UserAddress.id == address_id,
-        UserAddress.user_id == user_id
-    ).first()
+    try:
+        from app.users.utils import decodeJWT
+        payload = decodeJWT(token)
+        if not payload or 'sub' not in payload:
+            raise Exception("Invalid token")
+        
+        user_id = payload['sub']
+        return db.query(UserAddress).filter(
+            UserAddress.id == address_id,
+            UserAddress.user_id == user_id
+        ).first()
+    except Exception as e:
+        raise e
 
-def update_user_address(
+def update_address(
     db: Session,
-    user_id: str,
     address_id: str,
-    address: AddressCreate
+    address: AddressCreate,
+    token: str
 ) -> UserAddress:
     """Update user address"""
     try:
-        db_address = get_user_address(db, user_id, address_id)
+        from app.users.utils import decodeJWT
+        payload = decodeJWT(token)
+        if not payload or 'sub' not in payload:
+            raise Exception("Invalid token")
+        
+        user_id = payload['sub']
+        db_address = get_address(db, address_id, token)
         if not db_address:
             return None
         
@@ -108,10 +144,16 @@ def update_user_address(
         db.rollback()
         raise e
 
-def delete_user_address(db: Session, user_id: str, address_id: str) -> bool:
+def delete_address(db: Session, address_id: str, token: str) -> bool:
     """Delete user address"""
     try:
-        db_address = get_user_address(db, user_id, address_id)
+        from app.users.utils import decodeJWT
+        payload = decodeJWT(token)
+        if not payload or 'sub' not in payload:
+            raise Exception("Invalid token")
+        
+        user_id = payload['sub']
+        db_address = get_address(db, address_id, token)
         if not db_address:
             return False
         
