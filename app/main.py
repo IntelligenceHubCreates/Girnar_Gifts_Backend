@@ -12,25 +12,35 @@ from app.db import SessionLocal, engine, get_db, init_db
 from app.schemas import Greeting
 from app.users import models as user_models
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from app.models import Base
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
+# Initialize FastAPI app
 server = FastAPI()
 
+# Add CORS middleware
 server.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Frontend origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
+# Mount static files
+server.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Include routers
 server.include_router(user_router)
 server.include_router(product_router)
 server.include_router(order_router)
 server.include_router(address_router)
 
-@server.get("/", response_model=dict)
-async def root(db: Session = Depends(get_db)):
-    return {'test': 'Hello World', 'list': db.query(models.Greeting).all()}
+@server.get("/")
+async def root():
+    return {"message": "Welcome to Silvee API"}
 
 if __name__ == "__main__":
     uvicorn.run(server, host="0.0.0.0", port=8001)

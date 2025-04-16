@@ -32,32 +32,11 @@ def verify_password(password: str, hashed_pass: str) -> bool:
 def create_access_token(subject: Union[str, Any], session: Session, expires_delta: int = None) -> str:
     if expires_delta is not None:
         expires_delta = datetime.utcnow() + expires_delta
-        
     else:
         expires_delta = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-         
-    # letters = string.ascii_uppercase
-    # extra = ''.join(random.choice(letters) for _ in range(8))
-    # input_max_length = len(JWT_SECRET_KEY)
-    # extra_place = random.randint(0, input_max_length)
-    # one_more_place = random.randint(0, input_max_length)
-
-    # secret_key = JWT_SECRET_KEY[:extra_place] + extra + JWT_SECRET_KEY[extra_place:]
-    # secret_key = secret_key[:one_more_place] + MY_KEY + secret_key[one_more_place:]
-
-    # stmt = delete(UserTokens).where(UserTokens.user_id == str(subject))
-    # result = session.execute(stmt)
-    # session.commit()
-
-    # new_token = UserTokens(user_id= subject, extra= extra)
-    # session.add(new_token)
-    # session.commit()
-    # session.refresh(new_token)
-
-    # print("TEst", secret_key, extra)
+    
     to_encode = {"exp": expires_delta, "sub": str(subject)}
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, ALGORITHM)
-     
     return encoded_jwt
 
 def decodeJWT(jwtoken: str):
@@ -123,12 +102,10 @@ class JWTBearer(HTTPBearer):
 
     def verify_jwt(self, jwtoken: str) -> bool:
         isTokenValid: bool = False
-
         try:
             payload = decodeJWT(jwtoken)
         except:
             payload = None
-        
         if payload:
             return True, payload
         
