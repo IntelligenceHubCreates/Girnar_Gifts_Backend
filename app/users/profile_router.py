@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
-from ..database import get_db
-from ..auth import get_current_user
-from .models import Users
+from app.db import get_db
+from app.users.utils import get_current_user
+from app.users.models import Users
 from pydantic import BaseModel, EmailStr
 
 router = APIRouter(prefix="/api/user", tags=["user"])
@@ -19,18 +19,20 @@ class ProfileResponse(ProfileBase):
     class Config:
         from_attributes = True
 
-@router.get("/profile", response_model=ProfileResponse)
-async def get_profile(current_user: Users = Depends(get_current_user)):
+@router.get("/profile")
+async def get_profile(request: Request, db: Session = Depends(get_db)):
     """Get the current user's profile"""
+    current_user = await get_current_user(request, db)
     return current_user
 
 @router.put("/profile", response_model=ProfileResponse)
 async def update_profile(
     profile: ProfileBase,
-    current_user: Users = Depends(get_current_user),
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Update the current user's profile"""
+    current_user = await get_current_user(request, db)
     try:
         current_user.name = profile.name
         current_user.email = profile.email

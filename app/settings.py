@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     cloudinary_api_secret: str
     cloudinary_api_key: str
     cloudinary_cloud_name: str
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
 
     class Config:
         env_file = ".env"
