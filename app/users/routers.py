@@ -54,12 +54,9 @@ def login(request: requestdetails, response: Response, db: Session = Depends(get
 @router.get('/profile')
 async def get_profile(request: Request, db: Session = Depends(get_db)):
     try:
-        user = await get_current_user(request, db)
+        user, error_message = await get_current_user(request, db)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated"
-            )
+            raise Exception(error_message)
         
         return {
             "email": user.get("email", ''),
@@ -69,7 +66,7 @@ async def get_profile(request: Request, db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
 

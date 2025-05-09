@@ -22,7 +22,10 @@ class ProfileResponse(ProfileBase):
 @router.get("/profile")
 async def get_profile(request: Request, db: Session = Depends(get_db)):
     """Get the current user's profile"""
-    current_user = await get_current_user(request, db)
+    current_user, error_message = await get_current_user(request, db)
+    if(error_message):
+        return {'error': error_message}
+
     return current_user
 
 @router.put("/profile", response_model=ProfileResponse)
@@ -32,7 +35,7 @@ async def update_profile(
     db: Session = Depends(get_db)
 ):
     """Update the current user's profile"""
-    current_user = await get_current_user(request, db)
+    current_user, error_message = await get_current_user(request, db)
     try:
         current_user.name = profile.name
         current_user.email = profile.email

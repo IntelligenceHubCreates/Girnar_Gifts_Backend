@@ -36,7 +36,7 @@ def create_access_token(subject: Union[str, Any], session: Session, expires_delt
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, ALGORITHM)
     return encoded_jwt
 
-def decodeJWT(jwtoken: str):
+def decodeJWT(jwtoken: str, db: Session):
     try:
         # Decode and verify the token
         print("Verification", jwtoken)
@@ -44,7 +44,7 @@ def decodeJWT(jwtoken: str):
         print("PPO", payload)
         if(payload):
             print("Entered", payload)
-            user = get_user_by_id(payload['sub'])
+            user = get_user_by_id(db, payload['sub'])
             print("TYe", user)
             if user:
                 return {
@@ -56,12 +56,12 @@ def decodeJWT(jwtoken: str):
                     "name": user.name,
                     "phone": user.phone,
                     "address": user.addresses
-                }
-            return None
-        return None
+                }, None
+            return None, None
+        return None, None
     except Exception as e:
         print("TTTT", e)
-        return None
+        return None, e
 
 async def get_current_user(request: Request, db: Session):
     try:
@@ -69,14 +69,14 @@ async def get_current_user(request: Request, db: Session):
         if not token:
             return None
         
-        payload = decodeJWT(token)
+        payload, error_message = decodeJWT(token, db)
         if not payload:
-            return None
+            return None, error_message
             
-        return payload
+        return payload, None
     except Exception as e:
         print(f"Error getting current user: {str(e)}")
-        return None
+        return None, e
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
@@ -100,7 +100,7 @@ class JWTBearer(HTTPBearer):
     def verify_jwt(self, jwtoken: str) -> bool:
         isTokenValid: bool = False
         try:
-            payload = decodeJWT(jwtoken)
+            payload, e = decodeJWT(jwtoken)
         except:
             payload = None
         if payload:
