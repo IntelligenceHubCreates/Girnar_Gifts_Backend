@@ -15,7 +15,7 @@ from app.products.services import get_product
 
 router = APIRouter(prefix="/api", tags=["orders"])
 
-@router.post("/orders/", response_model=OrderResponse)
+@router.post("/orders", response_model=OrderResponse)
 async def create_order(
     order: OrderCreate,
     db: Session = Depends(get_db),
@@ -52,15 +52,25 @@ async def create_order(
             detail=str(e)
         )
 
-@router.get("/orders/", response_model=List[OrderResponse])
+@router.get("/orders", response_model=List[OrderResponse])
 async def get_orders(
     db: Session = Depends(get_db),
-    token: str = Depends(JWTBearer())
+    user = Depends(JWTBearer())
 ):
     """Get all orders for the current user"""
     try:
-        orders = get_user_orders(db, token)
-        return orders
+        orders = get_user_orders(db, user.get('id', ''))
+
+        result = []
+
+        for i in orders:
+            if isinstance(i.id, uuid.UUID):
+                i.id = str(i.id)
+            if isinstance(i.user_id, uuid.UUID):
+                i.user_id = str(i.user_id)
+            result.append(i)
+
+        return [OrderResponse.from_orm(order) for order in result]
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

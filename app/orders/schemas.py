@@ -8,10 +8,10 @@ class OrderItemBase(BaseModel):
     price: float
 
 class OrderBase(BaseModel):
-    shipping_address_id: str
+    shipping_address: str
     total_amount: float
     status: str = "processing"
-    items: List[OrderItemBase]
+    order_items: List[OrderItemBase] = []
 
 class OrderCreate(OrderBase):
     pass
@@ -28,7 +28,7 @@ class OrderResponse(OrderBase):
     id: str
     user_id: str
     order_date: datetime
-    items: List[OrderItemResponse]
+    order_items: List[OrderItemResponse] = []
     created_at: datetime
     updated_at: datetime
 

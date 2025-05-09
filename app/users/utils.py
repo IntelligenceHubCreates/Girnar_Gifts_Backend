@@ -5,6 +5,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Union, Any
 from jose import jwt
+from app.db import get_db, get_db_manually
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -36,17 +37,16 @@ def create_access_token(subject: Union[str, Any], session: Session, expires_delt
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, ALGORITHM)
     return encoded_jwt
 
-def decodeJWT(jwtoken: str, db: Session):
+def decodeJWT(jwtoken: str, db: Session, return_object: bool = False):
     try:
         # Decode and verify the token
-        print("Verification", jwtoken)
         payload = jwt.decode(jwtoken, JWT_SECRET_KEY, ALGORITHM)
-        print("PPO", payload)
         if(payload):
-            print("Entered", payload)
             user = get_user_by_id(db, payload['sub'])
-            print("TYe", user)
             if user:
+                if return_object:
+                    return user
+
                 return {
                     'email': user.email, 
                     'id': user.id, 
@@ -60,10 +60,10 @@ def decodeJWT(jwtoken: str, db: Session):
             return None, None
         return None, None
     except Exception as e:
-        print("TTTT", e)
+        print("Error", e)
         return None, e
 
-async def get_current_user(request: Request, db: Session):
+async def get_current_user(request: Request, db: Session, return_object: bool = False):
     try:
         token = request.cookies.get(COOKIE_ACCESS_KEY)
         if not token:
@@ -85,22 +85,25 @@ class JWTBearer(HTTPBearer):
     async def __call__(self, request: Request):
         credentials = request.cookies
         if credentials:
-            print("Came in")
             access_key = credentials.get(COOKIE_ACCESS_KEY, None)
             if not access_key:
                 raise HTTPException(status_code=403, detail="Invalid authorization code.")
-            isTokenValid, user = self.verify_jwt(access_key)
-            print("THat", user)
-            if not isTokenValid:
-                raise HTTPException(status_code=403, detail="Invalid token or expired token.")
+            db = get_db_manually()
+            user = None
+            try:
+                isTokenValid, user = self.verify_jwt(access_key, db)
+                if not isTokenValid:
+                    raise HTTPException(status_code=403, detail="Invalid token or expired token.")
+            finally: 
+                db.close()
             return user
         else:
             raise HTTPException(status_code=403, detail="Invalid authorization code.")
 
-    def verify_jwt(self, jwtoken: str) -> bool:
+    def verify_jwt(self, jwtoken: str, db) -> bool:
         isTokenValid: bool = False
         try:
-            payload, e = decodeJWT(jwtoken)
+            payload, e = decodeJWT(jwtoken, db)
         except:
             payload = None
         if payload:

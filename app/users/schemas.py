@@ -18,11 +18,12 @@ class UserResponse(UserBase):
         from_attributes = True
 
 class AddressBase(BaseModel):
-    name: str
-    street: str
+    address_line1: str
+    address_line2: str
     city: str
     state: str
-    zip_code: str
+    postal_code: str
+    country: str
     is_default: bool = False
 
 class AddressCreate(AddressBase):

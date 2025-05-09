@@ -1,6 +1,7 @@
 from datetime import datetime
 from app.models import Base
-from sqlalchemy import Column, ForeignKey, Integer, String, DECIMAL, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DECIMAL, DateTime, func
+from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -17,6 +18,8 @@ class Order(Base):
     total_amount = Column(DECIMAL(20, 2), nullable=False)
     status = Column(String(50), nullable=False)
     shipping_address = Column(String(500), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     user = relationship("Users", back_populates="orders")
     order_items = relationship("OrderItem", back_populates="order")
 

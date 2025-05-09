@@ -19,3 +19,6 @@ def get_db():
     finally:
         db.close()
 
+def get_db_manually():
+    db = SessionLocal()
+    return db
