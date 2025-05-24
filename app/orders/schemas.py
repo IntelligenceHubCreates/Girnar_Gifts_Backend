@@ -1,3 +1,4 @@
+from app.products.models import ProductBase
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -19,7 +20,10 @@ class OrderCreate(OrderBase):
 class OrderItemResponse(OrderItemBase):
     id: str
     order_id: str
-    created_at: datetime
+    product_id: str
+    price: int
+    quantity: int
+    product: ProductBase
 
     class Config:
         from_attributes = True

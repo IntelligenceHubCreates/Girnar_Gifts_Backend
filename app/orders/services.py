@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import OrderCreate, OrderUpdate
 from app.products.models import Product
+from sqlalchemy.orm import joinedload
 
 def create_order(db: Session, user_id: str, order: OrderCreate) -> Order:
     """Create a new order"""
@@ -45,6 +46,8 @@ def get_order(db: Session, user_id: str, order_id: str) -> Order:
     return db.query(Order).filter(
         Order.id == order_id,
         Order.user_id == user_id
+    ).options(
+        joinedload(Order.order_items).joinedload(OrderItem.product)
     ).first()
 
 def update_order(
@@ -72,4 +75,4 @@ def update_order(
 
 def get_order_items(db: Session, order_id: str) -> List[OrderItem]:
     """Get all items for an order"""
-    return db.query(OrderItem).filter(OrderItem.order_id == order_id).all() 
+    return db.query(OrderItem).filter(OrderItem.order_id == order_id).all()

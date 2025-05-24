@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api", tags=["orders"])
 async def create_order(
     order: OrderCreate,
     db: Session = Depends(get_db),
-    token: str = Depends(JWTBearer())
+    user = Depends(JWTBearer())
 ):
     """Create a new order"""
     try:
@@ -42,7 +42,8 @@ async def create_order(
         # Create order with calculated total
         order_data = order.model_dump()
         order_data["total_amount"] = total_amount
-        db_order = create_order(db, order_data)
+        user_id = user.get('id')
+        db_order = create_order(db, user_id, order_data)
         return db_order
     except HTTPException as e:
         raise e
@@ -68,6 +69,15 @@ async def get_orders(
                 i.id = str(i.id)
             if isinstance(i.user_id, uuid.UUID):
                 i.user_id = str(i.user_id)
+            for item in i.order_items:
+                if isinstance(item.id, uuid.UUID):
+                    item.id = str(item.id)
+                if isinstance(item.order_id, uuid.UUID):
+                    item.order_id = str(item.order_id)
+                if isinstance(item.product_id, uuid.UUID):
+                    item.product_id = str(item.product_id)
+                if isinstance(item.product.id, uuid.UUID):
+                    item.product.id = str(item.product.id)
             result.append(i)
 
         return [OrderResponse.from_orm(order) for order in result]
@@ -81,16 +91,34 @@ async def get_orders(
 async def get_order_by_id(
     order_id: str,
     db: Session = Depends(get_db),
-    token: str = Depends(JWTBearer())
+    user = Depends(JWTBearer())
 ):
     """Get order by ID"""
     try:
-        order = get_order(db, order_id, token)
+        user_id = user.get('id')
+        order = get_order(db, user_id, order_id)
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Order not found"
             )
+        if isinstance(order.id, uuid.UUID):
+            order.id = str(order.id)
+        if isinstance(order.user_id, uuid.UUID):
+            order.user_id = str(order.user_id)
+        for item in order.order_items:
+            if isinstance(item.id, uuid.UUID):
+                item.id = str(item.id)
+            if isinstance(item.order_id, uuid.UUID):
+                item.order_id = str(item.order_id)
+            if isinstance(item.product_id, uuid.UUID):
+                item.product_id = str(item.product_id)
+            if isinstance(item.product.id, uuid.UUID):
+                item.product.id = str(item.product.id)
+
+            print("Items", item.__dict__)
+
+        print("order", order.__dict__)
         return order
     except HTTPException as e:
         raise e
@@ -105,16 +133,21 @@ async def update_order_status(
     order_id: str,
     status: str,
     db: Session = Depends(get_db),
-    token: str = Depends(JWTBearer())
+    user = Depends(JWTBearer())
 ):
     """Update order status"""
     try:
-        order = update_order(db, order_id, status, token)
+        user_id = user.get('id')
+        order = update_order(db, user_id, order_id, status)
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Order not found"
             )
+        if isinstance(order.id, uuid.UUID):
+            order.id = str(order.id)
+        if isinstance(order.user_id, uuid.UUID):
+            order.user_id = str(order.user_id)
         return order
     except HTTPException as e:
         raise e
@@ -128,16 +161,21 @@ async def update_order_status(
 async def get_items_for_order(
     order_id: str,
     db: Session = Depends(get_db),
-    token: str = Depends(JWTBearer())
+    user = Depends(JWTBearer())
 ):
     """Get items for a specific order"""
     try:
-        items = get_order_items(db, order_id, token)
+        items = get_order_items(db, order_id)
         if not items:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Order not found"
             )
+        for item in items:
+            if isinstance(item.id, uuid.UUID):
+                item.id = str(item.id)
+            if isinstance(item.order_id, uuid.UUID):
+                item.order_id = str(item.order_id)
         return items
     except HTTPException as e:
         raise e
@@ -145,4 +183,4 @@ async def get_items_for_order(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
-        ) 
+        )
