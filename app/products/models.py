@@ -26,6 +26,7 @@ class Product(Base):
     date_published = Column(DateTime, default=datetime.utcnow)
     details = Column(ARRAY(String), nullable=True)
     order_items = relationship("OrderItem", back_populates="product")
+    cart_items = relationship("CartItem", back_populates="product")
 
 # Pydantic schemas
 class ProductBase(BaseModel):

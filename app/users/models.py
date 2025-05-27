@@ -21,6 +21,7 @@ class Users(Base):
     tokens = relationship("UserTokens", back_populates="user")
     orders = relationship("Order", back_populates="user")
     addresses = relationship("UserAddress", back_populates="user")
+    cart = relationship("Cart", back_populates="user", uselist=False)
 
 class UserAddress(Base):
     __tablename__ = "user_addresses"

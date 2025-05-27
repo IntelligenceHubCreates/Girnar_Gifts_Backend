@@ -248,9 +248,6 @@ async def get_product_detail(id: str, session: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     
-    print("Bye", product.__dir__())
-    print("Bye12121", product.__dict__)
-
     product_data = product.__dict__
     # product_data["product_image"] = f'{product_data["product_image"]}'
     product_data["id"] = str(product_data["id"])
