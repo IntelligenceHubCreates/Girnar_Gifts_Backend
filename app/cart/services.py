@@ -4,6 +4,7 @@ from app.cart.schemas import CartItemCreate, CartItemUpdate
 from app.products.models import Product
 from typing import List, Optional
 from fastapi import HTTPException, status
+from sqlalchemy import desc
 
 def get_or_create_cart(db: Session, user_id: str) -> Cart:
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
@@ -15,10 +16,28 @@ def get_or_create_cart(db: Session, user_id: str) -> Cart:
     return cart
 
 def get_cart(db: Session, user_id: str) -> Optional[Cart]:
-    return db.query(Cart)\
-        .options(joinedload(Cart.cart_items).joinedload(CartItem.product))\
+    # First get the cart
+    cart = db.query(Cart)\
         .filter(Cart.user_id == user_id)\
         .first()
+    
+    if not cart:
+        return None
+    
+    # Then get the cart items with sorting
+    cart_items = db.query(CartItem)\
+        .filter(CartItem.cart_id == cart.id)\
+        .order_by(desc(CartItem.created_at))\
+        .all()
+    
+    # Set the sorted cart items
+    cart.cart_items = cart_items
+    
+    # Load the products for each cart item
+    for item in cart.cart_items:
+        item.product = db.query(Product).filter(Product.id == item.product_id).first()
+    
+    return cart
 
 def add_to_cart(db: Session, user_id: str, item: CartItemCreate) -> CartItem:
     cart = get_or_create_cart(db, user_id)
@@ -51,7 +70,6 @@ def add_to_cart(db: Session, user_id: str, item: CartItemCreate) -> CartItem:
                 detail=f"Only {product.count - existing_item.quantity} more items available in stock"
             )
         existing_item.quantity += item.quantity
-        product.count -= item.quantity
         db.commit()
         db.refresh(existing_item)
         return existing_item
@@ -64,7 +82,6 @@ def add_to_cart(db: Session, user_id: str, item: CartItemCreate) -> CartItem:
     )
     
     # Decrease product count
-    product.count -= item.quantity
     
     db.add(cart_item)
     db.commit()

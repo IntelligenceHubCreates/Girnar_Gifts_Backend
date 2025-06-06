@@ -17,6 +17,7 @@ class CartItemResponse(CartItemBase):
     id: str
     cart_id: str
     product: ProductBase
+    product_count: int
 
     class Config:
         from_attributes = True

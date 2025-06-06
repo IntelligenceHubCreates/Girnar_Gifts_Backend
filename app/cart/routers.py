@@ -7,7 +7,7 @@ from app.users.utils import JWTBearer
 
 router = APIRouter(prefix="/api/cart", tags=["Cart"])
 
-@router.get("", response_model=CartResponse)
+@router.get("")
 async def get_cart(
     user = Depends(JWTBearer()),
     db: Session = Depends(get_db)

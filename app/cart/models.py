@@ -24,6 +24,8 @@ class CartItem(Base):
     cart_id = Column(UUID(as_uuid=True), ForeignKey("carts.id"), nullable=False)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
     
     cart = relationship("Cart", back_populates="cart_items")
     product = relationship("Product", back_populates="cart_items")
