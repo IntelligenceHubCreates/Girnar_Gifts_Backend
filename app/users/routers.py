@@ -6,6 +6,8 @@ from app.db import SessionLocal, get_db
 from app.users.models import UserTokens, Users
 from app.users.schemas import TokenSchema, UserCreate, requestdetails, GoogleLoginRequest
 from app.users.utils import COOKIE_ACCESS_KEY, create_access_token, get_current_user
+import httpx
+import json
 
 router = APIRouter(prefix= '/api/user')
 
@@ -47,7 +49,11 @@ def login(request: requestdetails, response: Response, db: Session = Depends(get
 
     print("Test", response)
 
+    user.id = ""
+
     return {
+        "user": user,
+        # "token": access,
         "Message": "Successfully Logged In",
     }
 
@@ -80,6 +86,75 @@ def google_login(google_data: GoogleLoginRequest, response: Response, db: Sessio
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+async def verify_google_token(access_token: str) -> dict:
+    """Verify Google access token with Google API"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return None
+    except Exception as e:
+        print(f"Error verifying Google token: {e}")
+        return None
+
+@router.get('/verify-login')
+async def verify_login(request: Request, db: Session = Depends(get_db)):
+    """Verify if user is still logged in"""
+    try:
+        user, error_message = await get_current_user(request, db)
+        if not user:
+            return {
+                "is_logged_in": False,
+                "message": error_message or "User not authenticated"
+            }
+        
+        # Check if user is a Google user
+        is_google_user = user.get("google_id") is not None
+        
+        # If Google user, verify Google access token
+        google_verified = False
+        google_user_info = None
+        
+        if is_google_user and user.get("google_access_token"):
+            google_user_info = await verify_google_token(user.get("google_access_token"))
+            google_verified = google_user_info is not None
+            
+            # If Google token is invalid, we might want to refresh it or log out the user
+            if not google_verified:
+                return {
+                    "is_logged_in": False,
+                    "message": "Google access token expired or invalid",
+                    "requires_google_refresh": True
+                }
+        
+        return {
+            "is_logged_in": True,
+            "user": {
+                "id": user.get("id"),
+                "email": user.get("email", ''),
+                "name": user.get("name", '') or '',
+                "phone": user.get("phone", '') or '',
+                "profile_image": user.get("profile_image", '') or '',
+                "role": user.get("role", 5),
+                "is_google_user": is_google_user,
+                "google_verified": google_verified
+            },
+            "google_info": google_user_info if is_google_user else None,
+            "message": "User is authenticated" + (" and Google access verified" if google_verified else "")
+        }
+        
+    except Exception as e:
+        return {
+            "is_logged_in": False,
+            "message": str(e)
+        }
 
 @router.get('/profile')
 async def get_profile(request: Request, db: Session = Depends(get_db)):
