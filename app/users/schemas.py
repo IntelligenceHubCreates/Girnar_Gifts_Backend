@@ -17,6 +17,14 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+class GoogleLoginRequest(BaseModel):
+    email: str
+    name: str
+    google_id: str
+    image: Optional[str] = None
+    google_id_token: Optional[str] = None
+    google_access_token: Optional[str] = None
+
 class AddressBase(BaseModel):
     address_line1: str
     address_line2: str

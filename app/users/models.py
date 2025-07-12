@@ -16,8 +16,12 @@ class Users(Base):
     phone = Column(String(20))
     confirmed = Column(Boolean, nullable=False, default=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
-    hashed_password = Column(String, nullable=False, unique=False)
+    hashed_password = Column(String, nullable=True, unique=False)  # Made nullable for Google users
     role = Column(Integer, nullable=False, unique=False)
+    google_id = Column(String, nullable=True, unique=True)  # Google ID
+    google_id_token = Column(String, nullable=True)  # Google ID token
+    google_access_token = Column(String, nullable=True)  # Google access token
+    profile_image = Column(String, nullable=True)  # Profile image URL
     tokens = relationship("UserTokens", back_populates="user")
     orders = relationship("Order", back_populates="user")
     addresses = relationship("UserAddress", back_populates="user")

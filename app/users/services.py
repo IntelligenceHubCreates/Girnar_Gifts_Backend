@@ -3,9 +3,10 @@ from typing import List
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.users.utils import decodeJWT
+from fastapi import HTTPException, status
 
 from app.users.models import Users, UserAddress
-from app.users.schemas import UserCreate, UserResponse, AddressCreate, AddressResponse, ProfileUpdate
+from app.users.schemas import UserCreate, UserResponse, AddressCreate, AddressResponse, ProfileUpdate, GoogleLoginRequest
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -14,6 +15,63 @@ def get_hashed_password(password: str) -> str:
 
 def verify_password(password: str, hashed_pass: str) -> bool:
     return password_context.verify(password, hashed_pass)
+
+def handle_google_login(db: Session, google_data: GoogleLoginRequest) -> Users:
+    """Handle Google login - create or update user"""
+    try:
+        # Check if user exists by Google ID
+        existing_user = db.query(Users).filter(Users.google_id == google_data.google_id).first()
+        
+        if existing_user:
+            # Update existing user with latest Google data
+            existing_user.name = google_data.name
+            existing_user.email = google_data.email
+            existing_user.profile_image = google_data.image
+            existing_user.google_id_token = google_data.google_id_token
+            existing_user.google_access_token = google_data.google_access_token
+            existing_user.confirmed = True
+            db.commit()
+            db.refresh(existing_user)
+            return existing_user
+        
+        # Check if user exists by email (for users who registered with email but now using Google)
+        existing_user_by_email = db.query(Users).filter(Users.email == google_data.email).first()
+        
+        if existing_user_by_email:
+            # Link Google account to existing email account
+            existing_user_by_email.google_id = google_data.google_id
+            existing_user_by_email.google_id_token = google_data.google_id_token
+            existing_user_by_email.google_access_token = google_data.google_access_token
+            existing_user_by_email.profile_image = google_data.image
+            existing_user_by_email.confirmed = True
+            db.commit()
+            db.refresh(existing_user_by_email)
+            return existing_user_by_email
+        
+        # Create new user
+        new_user = Users(
+            email=google_data.email,
+            name=google_data.name,
+            google_id=google_data.google_id,
+            google_id_token=google_data.google_id_token,
+            google_access_token=google_data.google_access_token,
+            profile_image=google_data.image,
+            confirmed=True,
+            role=5,  # Default role for regular users
+            hashed_password=None  # Google users don't need password
+        )
+        
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to process Google login: {str(e)}"
+        )
 
 def create_user(db: Session, user: UserCreate) -> Users:
     """Create a new user"""
