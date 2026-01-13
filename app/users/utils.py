@@ -84,10 +84,15 @@ class JWTBearer(HTTPBearer):
 
     async def __call__(self, request: Request):
         credentials = request.cookies
-        if credentials:
-            access_key = credentials.get(COOKIE_ACCESS_KEY, None)
-            if not access_key:
-                raise HTTPException(status_code=403, detail="Invalid authorization code.")
+        access_key = credentials.get(COOKIE_ACCESS_KEY, None)
+
+        if not access_key:
+            # Check Authorization header
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                access_key = auth_header.split(" ")[1]
+
+        if access_key:
             db = get_db_manually()
             user = None
             try:

@@ -99,6 +99,7 @@ async def add_new_product(
     productDiscountAmount: int = Form(...),
     productImages: List[UploadFile] = File(...),
     productDetails: List[str] = File(...),
+    offerExpirationDate: datetime.datetime = Form(None),
     user = Depends(JWTBearer()),
     session: Session = Depends(get_db)
 ):
@@ -113,7 +114,7 @@ async def add_new_product(
             "percentage_discount": productDiscount,
             "name": productName,
             "category": productCategory,
-            "offer_expiration_date": datetime.datetime(1970, 1, 1),
+            "offer_expiration_date": offerExpirationDate,
             "product_image": images,
             "count": productCount,
             "description": productDescription,

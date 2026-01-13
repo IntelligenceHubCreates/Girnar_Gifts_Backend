@@ -49,11 +49,11 @@ def login(request: requestdetails, response: Response, db: Session = Depends(get
 
     print("Test", response)
 
-    user.id = ""
+    # user.id = ""
 
     return {
         "user": user,
-        # "token": access,
+        "token": access,
         "Message": "Successfully Logged In",
     }
 
