@@ -30,7 +30,7 @@ class Product(Base):
 
 # Pydantic schemas
 class ProductBase(BaseModel):
-    id: str
+    id: uuid.UUID
     name: str
     category: str
     original_price: float
