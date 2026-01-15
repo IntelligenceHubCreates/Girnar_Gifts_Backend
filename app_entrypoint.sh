@@ -2,12 +2,19 @@
 
 # Wait for the database to be ready
 # Use env vars passed from docker-compose
-./wait-for-it.sh $POSTGRES_SERVER:$POSTGRES_PORT --timeout=30 --strict -- echo "Database is up"
+./wait-for-it.sh $POSTGRES_SERVER:$POSTGRES_PORT --timeout=30 --strict -- echo "Database port is open"
+
+# Additional check: Wait for PostgreSQL to be ready to accept connections
+echo "Waiting for PostgreSQL to be ready..."
+export PGPASSWORD=$POSTGRES_PASSWORD
+until psql -h $POSTGRES_SERVER -U $POSTGRES_USER -d $POSTGRES_DB -c '\q' 2>/dev/null; do
+  echo "PostgreSQL is still starting up... waiting"
+  sleep 1
+done
+echo "PostgreSQL is ready!"
 
 # Run Alembic migrations
 alembic upgrade head
-
-export PGPASSWORD=$POSTGRES_PASSWORD
 
 # Check if the record exists in the database
 RECORD_CHECK_QUERY="SELECT * FROM users WHERE id = 1;"
