@@ -98,7 +98,7 @@ async def add_new_product(
     productDiscount: int = Form(...),
     productDiscountAmount: int = Form(...),
     productImages: List[UploadFile] = File(...),
-    productDetails: List[str] = File(...),
+    productDetails: List[str] = Form(...),
     offerExpirationDate: datetime.datetime = Form(None),
     user = Depends(JWTBearer()),
     session: Session = Depends(get_db)
@@ -128,9 +128,7 @@ async def add_new_product(
             session.commit()
             session.refresh(new_product)
 
-            return ProductBase.from_orm(
-                new_product if not isinstance(new_product.id, UUID) else new_product.__dict__ | {"id": str(new_product.id)}
-            )
+            return ProductBase.from_orm(new_product)
 
 
         else:
@@ -230,14 +228,13 @@ async def get_product_list(limit: int = Query(100, le=100),
                            session: Session = Depends(get_db)):
 
     products = session.query(Product).offset(skip).limit(limit).all()
+    count = session.query(Product).count()
     return {
         "data": [
-            ProductBase.from_orm(
-                product if not isinstance(product.id, UUID) else product.__dict__ | {"id": str(product.id)}
-            )
+            ProductBase.from_orm(product)
             for product in products
         ],
-        "totalCount": len(products),
+        "totalCount": count,
     }
 
 @router.get("/{id}", tags=["Product"])
