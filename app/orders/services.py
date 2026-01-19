@@ -7,26 +7,26 @@ from app.orders.schemas import OrderCreate, OrderUpdate
 from app.products.models import Product
 from sqlalchemy.orm import joinedload
 
-def create_order(db: Session, user_id: str, order: OrderCreate) -> Order:
+def create_order(db: Session, user_id: str, order: dict) -> Order:
     """Create a new order"""
     try:
         db_order = Order(
             user_id=user_id,
-            shipping_address_id=order.shipping_address_id,
-            total_amount=order.total_amount,
-            status=order.status,
+            shipping_address=order['shipping_address'],
+            total_amount=order['total_amount'],
+            status=order['status'],
             order_date=datetime.utcnow()
         )
         db.add(db_order)
         db.flush()  # Get the order ID without committing
 
         # Create order items
-        for item in order.items:
+        for item in order['order_items']:
             db_item = OrderItem(
                 order_id=db_order.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                price=item.price
+                product_id=item['product_id'],
+                quantity=item['quantity'],
+                price=item['price']
             )
             db.add(db_item)
 

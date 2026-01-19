@@ -25,23 +25,31 @@ async def create_order(
     try:
         # Verify product availability and calculate total
         total_amount = 0
-        for item in order.items:
+        enriched_items = []
+        for item in order.order_items:
             product = get_product(db, item.product_id)
             if not product:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Product {item.product_id} not found"
                 )
-            if product.stock < item.quantity:
+            if product.count < item.quantity:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Not enough stock for product {product.name}"
                 )
-            total_amount += product.price * item.quantity
+            price = float(product.original_price)
+            total_amount += price * item.quantity
+            
+            # Create enriched item dict with correct price
+            item_data = item.model_dump()
+            item_data['price'] = price
+            enriched_items.append(item_data)
 
         # Create order with calculated total
         order_data = order.model_dump()
         order_data["total_amount"] = total_amount
+        order_data["order_items"] = enriched_items
         user_id = user.get('id')
         db_order = create_order(db, user_id, order_data)
         return db_order

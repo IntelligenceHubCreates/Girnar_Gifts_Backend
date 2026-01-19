@@ -99,6 +99,21 @@ def update_cart_item(db: Session, user_id: str, item_id: str, item_update: CartI
     
     if not cart_item:
         return None
+    
+    # Get the product and check available quantity
+    product = db.query(Product).filter(Product.id == cart_item.product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found"
+        )
+    
+    # Check if requested quantity is available
+    if product.count < item_update.quantity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only {product.count} items available in stock"
+        )
         
     cart_item.quantity = item_update.quantity
     db.commit()
