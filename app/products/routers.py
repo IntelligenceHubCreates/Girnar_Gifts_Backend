@@ -98,6 +98,7 @@ async def add_new_product(
     productDiscount: int = Form(...),
     productDiscountAmount: int = Form(...),
     productImages: List[UploadFile] = File(...),
+    productImageUrls: List[str] = Form(None),
     productDetails: List[str] = Form(...),
     offerExpirationDate: datetime.datetime = Form(None),
     user = Depends(JWTBearer()),
@@ -108,6 +109,11 @@ async def add_new_product(
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorised")
         
         images = await upload_images(productImages)
+
+        if productImageUrls:
+            for url in productImageUrls:
+                if url:
+                    images.append({"url": url, "public_id": "direct_url"})
 
         product_data = {
             "original_price": productPrice, 
@@ -170,6 +176,7 @@ async def update_product(
     productDiscount: int = Form(...),
     productDiscountAmount: int = Form(...),
     productImages: List[UploadFile] = File(None),
+    productImageUrls: List[str] = Form(None),
     productDetails: List[str] = Form(...),
     oldProductImages = Form(...),
     user=Depends(JWTBearer()),
@@ -190,6 +197,11 @@ async def update_product(
         productImages = []
 
     images = await upload_images(productImages)
+
+    if productImageUrls:
+        for url in productImageUrls:
+            if url:
+                images.append({"url": url, "public_id": "direct_url"})
 
     images.extend(file_contents or [])
 
