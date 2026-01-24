@@ -76,3 +76,29 @@ def update_order(
 def get_order_items(db: Session, order_id: str) -> List[OrderItem]:
     """Get all items for an order"""
     return db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+
+def get_all_orders_admin(db: Session) -> List[Order]:
+    """Get all orders for admin"""
+    return db.query(Order).options(
+        joinedload(Order.order_items).joinedload(OrderItem.product)
+    ).all()
+
+def update_order_status_admin(
+    db: Session,
+    order_id: str,
+    status: str
+) -> Order:
+    """Update order status for admin"""
+    try:
+        db_order = db.query(Order).filter(Order.id == order_id).first()
+        if not db_order:
+            return None
+        
+        db_order.status = status
+        db_order.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+    except Exception as e:
+        db.rollback()
+        raise e
