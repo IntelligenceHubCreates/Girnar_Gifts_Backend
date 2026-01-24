@@ -40,6 +40,7 @@ class ProductBase(BaseModel):
     offer_expiration_date: Optional[datetime] = None
     product_image: list
     date_published: Optional[datetime] = None
+    amount_discount: Optional[int] = None
 
     class Config:
         orm_mode = True
