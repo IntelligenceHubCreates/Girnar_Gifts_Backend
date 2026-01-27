@@ -10,6 +10,7 @@ from app.orders.routers import router as order_router
 from app.users.address_router import router as address_router
 from app.users.profile_router import router as profile_router
 from app.cart.routers import router as cart_router
+from app.favorite.routers import router as favorite_router
 from app import models, schemas
 from app.db import SessionLocal, engine, get_db, init_db
 from app.schemas import Greeting
@@ -106,6 +107,7 @@ server.include_router(order_router)
 server.include_router(address_router)
 server.include_router(profile_router)
 server.include_router(cart_router)
+server.include_router(favorite_router)
 
 @server.get("/")
 async def root():
