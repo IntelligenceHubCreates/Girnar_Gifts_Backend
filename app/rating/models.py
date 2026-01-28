@@ -13,5 +13,5 @@ class Rating(Base):
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
     rating = Column(Integer, nullable=False)
     review = Column(String(300))
-    user = relationship("User", back_populates="ratings")
+    user = relationship("Users", back_populates="ratings")
     product = relationship("Product", back_populates="ratings")

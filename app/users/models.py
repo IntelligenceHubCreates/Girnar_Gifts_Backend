@@ -27,6 +27,7 @@ class Users(Base):
     addresses = relationship("UserAddress", back_populates="user")
     cart = relationship("Cart", back_populates="user", uselist=False)
     favorites = relationship("Favorite", back_populates="user")
+    ratings = relationship("Rating", back_populates="user")
 
 class UserAddress(Base):
     __tablename__ = "user_addresses"

@@ -28,6 +28,7 @@ class Product(Base):
     order_items = relationship("OrderItem", back_populates="product")
     cart_items = relationship("CartItem", back_populates="product")
     favorites = relationship("Favorite", back_populates="product")
+    ratings = relationship("Rating", back_populates="product")
 
 # Pydantic schemas
 class ProductBase(BaseModel):
