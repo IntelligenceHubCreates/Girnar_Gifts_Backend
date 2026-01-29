@@ -98,12 +98,16 @@ class JWTBearer(HTTPBearer):
             try:
                 isTokenValid, user = self.verify_jwt(access_key, db)
                 if not isTokenValid:
-                    raise HTTPException(status_code=403, detail="Invalid token or expired token.")
+                    if self.auto_error:
+                        raise HTTPException(status_code=401, detail="Invalid token or expired token.")
+                    return None
             finally: 
                 db.close()
             return user
         else:
-            raise HTTPException(status_code=403, detail="Invalid authorization code.")
+            if self.auto_error:
+                raise HTTPException(status_code=401, detail="Invalid authorization code.")
+            return None
 
     def verify_jwt(self, jwtoken: str, db) -> bool:
         isTokenValid: bool = False
