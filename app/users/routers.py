@@ -175,6 +175,12 @@ async def get_profile(request: Request, db: Session = Depends(get_db)):
             detail=str(e)
         )
 
+@router.post('/logout')
+async def logout(response: Response):
+    """Clear access token cookie"""
+    response.delete_cookie(key=COOKIE_ACCESS_KEY, httponly=True, samesite="strict")
+    return {"message": "Successfully logged out"}
+
 # @router.get('/')
 # def get_users(response: Response, db: Session = Depends(get_db)):
 #     user = db.query(Users).all()
