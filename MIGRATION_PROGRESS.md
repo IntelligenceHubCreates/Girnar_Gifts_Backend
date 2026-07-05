@@ -31,3 +31,9 @@ See `MIGRATION_MAP.md` (workspace root, two levels up, in the sibling `final-pro
 - **Found and fixed a hardcoded JWT secret**: `app/users/utils.py` had `JWT_SECRET_KEY` as a literal string checked into source, completely bypassing `Settings.secret_key` (which was declared but unused). Anyone with repo read access could have forged valid JWTs. Now reads `settings.secret_key`.
 - Added `app/scripts/seed_admin.py` (reads `SEED_ADMIN_PASSWORD` from env), `seed_categories.py` (Girnar's 7-category gift taxonomy), `seed_products.py` (bulk-CSV import stub — full fidelity pending Phase 5's new Product columns). All idempotent, verified by running twice.
 - Local verification: `girnar_db` has 32 tables, 1 admin user, 7 categories, 0 products.
+
+## Phase 5 — Product schema fields + pagination verification
+- Added `sku`, `slug` (both unique/indexed), `gst_percent`, `hsn`, `weight_g`, `dimensions`, `personalisation_options` (JSON list), `seo_title`, `seo_description` to `Product` — model, migration, `ProductBase` response schema, and both create/update endpoint form fields. `stock` intentionally maps to the existing `count` column rather than adding a duplicate field.
+- Verified end-to-end: created/serialized/deleted a test product via the ORM+schema layer directly inside the running container.
+- Verified the products-list pagination empirically: `GET /api/product/all?limit=777` correctly 422s from query validation (max 100) rather than erroring as an invalid product ID — confirms the route is not being shadowed by `/{id}`, matching Phase 0's static-analysis finding. No fix needed.
+- Categories are already fully DB-driven on the admin side; storefront nav/routing flagged separately (see `MANUAL_STEPS.md` §1, frontend progress log).
