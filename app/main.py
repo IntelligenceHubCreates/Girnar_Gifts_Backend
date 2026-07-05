@@ -36,35 +36,35 @@ Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI app with comprehensive documentation
 server = FastAPI(
-    title="Silvee API",
+    title="Girnar Gifts API",
     description="""
-    ## Silvee E-commerce Platform API
-    
-    A comprehensive REST API for the Silvee jewelry e-commerce platform.
-    
+    ## Girnar Gifts E-commerce Platform API
+
+    A comprehensive REST API for the Girnar Gifts e-commerce platform.
+
     ### Features
     * **User Management** - Authentication, registration, profiles
-    * **Product Management** - CRUD operations for jewelry products
+    * **Product Management** - CRUD operations for gift products
     * **Order Management** - Shopping cart, checkout, order processing
     * **Payment Integration** - RazorPay payment gateway
     * **Image Management** - Cloudinary integration for product images
-    
+
     ### Authentication
     This API uses JWT tokens for authentication. Include the token in the Authorization header:
     ```
     Authorization: Bearer <your-jwt-token>
     ```
-    
+
     ### Rate Limiting
     API endpoints are rate-limited to ensure fair usage.
-    
+
     ### Error Handling
     All endpoints return consistent error responses with appropriate HTTP status codes.
     """,
     version="1.0.0",
     # contact={
-    #     "name": "Silvee Development Team",
-    #     "email": "dev@silvee.com",
+    #     "name": "Girnar Gifts Development Team",
+    #     "email": "dev@girnargifts.com",
     # },
     # license_info={
     #     "name": "MIT",
@@ -80,7 +80,7 @@ server = FastAPI(
     #     },
     #     {
     #         "name": "products",
-    #         "description": "Product management operations for jewelry items including CRUD operations."
+    #         "description": "Product management operations for gift items including CRUD operations."
     #     },
     #     {
     #         "name": "orders",
@@ -140,7 +140,7 @@ server.include_router(shiprocket_webhook_router)  # shiprocket webhook (guarded 
 
 @server.get("/")
 async def root():
-    return {"message": "Welcome to Silvee API"}
+    return {"message": "Welcome to Girnar Gifts API"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))
