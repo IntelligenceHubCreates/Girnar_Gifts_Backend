@@ -11,6 +11,16 @@ from app.rating import models as rating_models
 from app.favorite import models as favorite_models
 from app.orders import models as orders_models
 from app.cart import models as cart_models
+from app.blog import models as blog_models
+from app.coupons import models as coupons_models
+from app.notifications import models as notifications_models
+from app.returns import models as returns_models
+from app.shipping import models as shipping_models
+from app.store_settings import models as store_settings_models
+# NewsletterSubscriber and PaymentOrder are defined inline in their routers
+# modules (no separate models.py) - import those too so target_metadata sees them.
+from app.newsletter import routers as newsletter_routers
+from app.payments import routers as payments_routers
 from app.models import Base
 from app.settings import settings
 

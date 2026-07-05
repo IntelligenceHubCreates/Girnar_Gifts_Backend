@@ -11,11 +11,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import delete
 
+from app.settings import settings
 from app.users.models import Users
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 4320
 ALGORITHM = "HS256"
-JWT_SECRET_KEY = "ydnmakingasecurekey@jwt#developerqgm"
+JWT_SECRET_KEY = settings.secret_key
 MY_KEY = "IamGonnaBeUsingThisKey"
 COOKIE_ACCESS_KEY = 'user_session'
 

@@ -1,3 +1,5 @@
 __pycache__/
 .env
+.env.girnar-local
+compose.girnar-local.yml
 ecommerce/postgresql
