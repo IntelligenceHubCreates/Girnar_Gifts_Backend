@@ -37,3 +37,14 @@ See `MIGRATION_MAP.md` (workspace root, two levels up, in the sibling `final-pro
 - Verified end-to-end: created/serialized/deleted a test product via the ORM+schema layer directly inside the running container.
 - Verified the products-list pagination empirically: `GET /api/product/all?limit=777` correctly 422s from query validation (max 100) rather than erroring as an invalid product ID — confirms the route is not being shadowed by `/{id}`, matching Phase 0's static-analysis finding. No fix needed.
 - Categories are already fully DB-driven on the admin side; storefront nav/routing flagged separately (see `MANUAL_STEPS.md` §1, frontend progress log).
+
+## Phase 7 — Payment/order/notification branding
+- Verified already satisfied by earlier phases: Razorpay HMAC signature verification and the webhook secret both already read from `settings.*` (not hardcoded), currency is INR end-to-end, receipt prefix (`girnar_`) wired in Phase 5. The only email-sending path (newsletter) was already rebranded in Phase 3. WhatsApp adapter is an intentional no-op stub already using `settings.brand_name`. No code changes needed.
+
+## Phase 8 — Cloudinary
+- Folder rebrand (`CLOUDINARY_FOLDER=girnar-gifts`) was already wired into every upload call in Phase 3. This phase was documentation only — upload preset guidance and image rules added to `MANUAL_STEPS.md`.
+
+## Phase 9 — Deployment config & .env.example
+- `Dockerfile`/`compose.yml` reviewed — already generic and env-driven, no changes needed. No `vercel.json` in either repo; none added (Next.js/Vercel needs none by default).
+- `app/env.example` was missing Razorpay, CORS, `CLOUDINARY_FOLDER`, brand, and WhatsApp/Shiprocket settings entirely — now documents every `Settings` field as a placeholder.
+- **Found and removed `init.sql`** at the repo root: dead, unreferenced (not wired into Dockerfile/compose.yml/`docker-entrypoint-initdb.d`) containing the same hardcoded admin email + a bcrypt hash as the `app_entrypoint.sh` backdoor fixed in Phase 4.
