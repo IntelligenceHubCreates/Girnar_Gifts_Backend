@@ -12,6 +12,7 @@ from app.favorite import models as favorite_models
 from app.orders import models as orders_models
 from app.cart import models as cart_models
 from app.models import Base
+from app.settings import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -32,6 +33,15 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+# Build the DB URL from app.settings (same postgres_* env vars the app itself
+# uses via app/db.py), so migrations always target whatever database the app
+# is configured for instead of the hardcoded value previously in alembic.ini.
+config.set_main_option(
+    "sqlalchemy.url",
+    f"postgresql://{settings.postgres_user}:{settings.postgres_password}"
+    f"@{settings.postgres_server}:{settings.postgres_port}/{settings.postgres_db}",
+)
 
 
 def run_migrations_offline() -> None:
