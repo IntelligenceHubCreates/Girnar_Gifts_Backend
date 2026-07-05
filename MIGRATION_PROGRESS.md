@@ -15,3 +15,19 @@ See `MIGRATION_MAP.md` (workspace root, two levels up, in the sibling `final-pro
 ## Phase 2 — Renaming
 - `app/main.py`: FastAPI `title` → `"Girnar Gifts API"`, description text de-jewelry-fied and rebranded, root `GET /` message → `"Welcome to Girnar Gifts API"`.
 - Backend package folder (`app/`) is generically named, not literally branded — no folder rename needed.
+
+## Prerequisite fix — Alembic env-var wiring
+- `alembic.ini` had a hardcoded dev connection string committed to the repo; `alembic/env.py` ignored the environment entirely. Fixed `env.py` to build the URL from `app.settings` (same `postgres_*` env vars the app itself uses), removed the hardcoded credential from `alembic.ini`.
+
+## Phase 3 — Brand-config layer
+- `app/settings.py`: added `brand_name`, `brand_support_email`, `brand_gstin`, `cloudinary_folder` (default `girnar-gifts`), `razorpay_receipt_prefix` (default `girnar_`), `cors_origins` (default Girnar's own domains) — all with sane defaults so existing `.env` files don't break.
+- `app/main.py`: CORS was hardcoded to `allow_origins=["*"]` with an unused env-driven line commented out — wired it to actually read `settings.cors_origins`.
+- Replaced every "Little Loot" / `littleloot/...` Cloudinary-folder literal across `newsletter`, `blog`, `payments`, `admin`, `notifications`, `products`, `users`, `shipping`, `returns` routers with the new settings fields.
+
+## Phase 4 — DB separation, seed scripts, and two security findings
+- Created local `girnar_db` (empty, fresh) via a standalone `compose.girnar-local.yml` + `.env.girnar-local` (both untracked/gitignored — a real Little Loot dev stack was already running on the default ports 8000/6789/4444/9432 from a *different* directory, so this avoids any collision).
+- **Caught before running**: `alembic/env.py` only imported `users/products/rating/favorite/orders/cart` models. Autogenerate against the full model set therefore proposed *dropping 19 tables* (notifications, coupons, shipments, returns_*, blog_posts, store_settings, newsletter_subscribers, payment_orders, refunds, courier_partners, etc.) — all real feature tables from the Phase-1 WIP that only existed via `create_all()`, never in migration history. Fixed by adding the missing model imports to `env.py`; regenerated migration then only contained genuine drift (missing columns, a couple of intentional column removals). Applied cleanly to `girnar_db`.
+- **Found and fixed a hardcoded admin backdoor**: `app_entrypoint.sh` auto-inserted a real email + baked-in bcrypt password hash as an admin (role=1) user into any database missing a users.id=1 row, on every container start. It fired against `girnar_db` before this was caught; the row was deleted. Removed the insert block entirely — admin provisioning is now only via `app/scripts/seed_admin.py`.
+- **Found and fixed a hardcoded JWT secret**: `app/users/utils.py` had `JWT_SECRET_KEY` as a literal string checked into source, completely bypassing `Settings.secret_key` (which was declared but unused). Anyone with repo read access could have forged valid JWTs. Now reads `settings.secret_key`.
+- Added `app/scripts/seed_admin.py` (reads `SEED_ADMIN_PASSWORD` from env), `seed_categories.py` (Girnar's 7-category gift taxonomy), `seed_products.py` (bulk-CSV import stub — full fidelity pending Phase 5's new Product columns). All idempotent, verified by running twice.
+- Local verification: `girnar_db` has 32 tables, 1 admin user, 7 categories, 0 products.
