@@ -89,6 +89,16 @@ class Product(Base):
     color_hex             = Column(String(7),  nullable=True)   # e.g. "#F4A7B9"
     color_variants        = Column(JSON, nullable=False, default=list)
     product_video         = Column(String(512), nullable=True)
+    # ─── Phase 5: SKU/tax/logistics/SEO fields (Girnar migration) ───
+    sku                   = Column(String(64), unique=True, nullable=True, index=True)
+    slug                  = Column(String(255), unique=True, nullable=True, index=True)
+    gst_percent           = Column(Integer, nullable=False, default=0)
+    hsn                   = Column(String(20), nullable=True)
+    weight_g              = Column(Integer, nullable=True)
+    dimensions            = Column(String(60), nullable=True)   # e.g. "89 x 42 x 56 cm"
+    personalisation_options = Column(JSON, nullable=False, default=list)
+    seo_title             = Column(String(255), nullable=True)
+    seo_description       = Column(String(500), nullable=True)
 
     # ─── Relationships ─────────────────────────────────────────────
     category_ref = relationship("Category", back_populates="products")
@@ -153,6 +163,15 @@ class ProductBase(BaseModel):
     is_active:            bool         = True
     offer_expiration_date: Optional[datetime]
     created_at:           Optional[datetime]
+    sku:                  Optional[str] = None
+    slug:                 Optional[str] = None
+    gst_percent:          int          = 0
+    hsn:                  Optional[str] = None
+    weight_g:             Optional[int] = None
+    dimensions:           Optional[str] = None
+    personalisation_options: List[Any] = []
+    seo_title:            Optional[str] = None
+    seo_description:      Optional[str] = None
 
     class Config:
         from_attributes = True

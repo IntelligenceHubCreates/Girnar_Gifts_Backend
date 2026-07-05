@@ -763,6 +763,15 @@ async def add_new_product(
     productVariantGroupId: Optional[str]    = Form(None),
     productColorVariants:  Optional[str]    = Form(None),
      productVideo:         Optional[str] = Form(None),
+    productSku:            Optional[str]    = Form(None),
+    productSlug:           Optional[str]    = Form(None),
+    productGstPercent:     Optional[int]    = Form(0),
+    productHsn:            Optional[str]    = Form(None),
+    productWeightG:        Optional[int]    = Form(None),
+    productDimensions:     Optional[str]    = Form(None),
+    productPersonalisationOptions: Optional[str] = Form(None),
+    productSeoTitle:       Optional[str]    = Form(None),
+    productSeoDescription: Optional[str]    = Form(None),
     user=Depends(JWTBearer()),
     session: Session = Depends(get_db),
 ):
@@ -794,6 +803,15 @@ async def add_new_product(
         variant_group_id=productVariantGroupId or None,
         color_variants = json.loads(productColorVariants) if productColorVariants else [],
         product_video = productVideo or None,
+        sku=productSku or None,
+        slug=productSlug or None,
+        gst_percent=productGstPercent or 0,
+        hsn=productHsn or None,
+        weight_g=productWeightG,
+        dimensions=productDimensions or None,
+        personalisation_options=json.loads(productPersonalisationOptions) if productPersonalisationOptions else [],
+        seo_title=productSeoTitle or None,
+        seo_description=productSeoDescription or None,
     )
     _sync_product_subcategory(new_product, session)
 
@@ -913,6 +931,15 @@ async def update_product(
     productColorVariants:  Optional[str]    = Form(None),
     productVideo:          Optional[str] = Form(None),
     deleteVideo:           Optional[str] = Form(None),
+    productSku:            Optional[str]    = Form(None),
+    productSlug:           Optional[str]    = Form(None),
+    productGstPercent:     Optional[int]    = Form(None),
+    productHsn:            Optional[str]    = Form(None),
+    productWeightG:        Optional[int]    = Form(None),
+    productDimensions:     Optional[str]    = Form(None),
+    productPersonalisationOptions: Optional[str] = Form(None),
+    productSeoTitle:       Optional[str]    = Form(None),
+    productSeoDescription: Optional[str]    = Form(None),
     user=Depends(JWTBearer()),
     session: Session = Depends(get_db),
 ):
@@ -953,6 +980,24 @@ async def update_product(
     elif productVideo is not None:
         product.product_video = productVideo or None
 
+    if productSku is not None:
+        product.sku = productSku or None
+    if productSlug is not None:
+        product.slug = productSlug or None
+    if productGstPercent is not None:
+        product.gst_percent = productGstPercent
+    if productHsn is not None:
+        product.hsn = productHsn or None
+    if productWeightG is not None:
+        product.weight_g = productWeightG
+    if productDimensions is not None:
+        product.dimensions = productDimensions or None
+    if productPersonalisationOptions is not None:
+        product.personalisation_options = json.loads(productPersonalisationOptions)
+    if productSeoTitle is not None:
+        product.seo_title = productSeoTitle or None
+    if productSeoDescription is not None:
+        product.seo_description = productSeoDescription or None
 
     _sync_product_subcategory(product, session)
 
