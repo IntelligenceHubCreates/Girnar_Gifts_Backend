@@ -29,6 +29,7 @@ from app.shipping.routers import (
     admin_shipping_router, admin_couriers_router,
     shipping_router, shiprocket_webhook_router,
 )
+from app.settings import settings
 # from fastapi.staticfiles import StaticFiles
 from app.models import Base
 # Create database tables
@@ -98,13 +99,13 @@ server = FastAPI(
 )
 
 # Add CORS middleware
-# Get allowed origins from environment variable, default to localhost for development
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+# Allowed origins come from Settings.cors_origins (CORS_ORIGINS env var),
+# which defaults to Girnar's own domains only — never a wildcard.
+allowed_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 
 server.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    # allow_origins=allowed_origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
