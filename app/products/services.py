@@ -46,3 +46,28 @@ def delete_product(db: Session, product_id: str) -> bool:
     db.delete(db_product)
     db.commit()
     return True 
+
+# app/products/crud.py
+# ADD at the bottom — leave all existing functions untouched
+
+def get_product_variants(db: Session, product_id: str) -> List[Product]:
+    """
+    Returns all active color variants of a product — all products that share
+    the same variant_group_id, including the product itself.
+    Returns an empty list if the product has no variant_group_id set.
+    """
+    product = get_product(db, product_id)
+
+    # No product found, or no variant group — nothing to return
+    if not product or not product.variant_group_id:
+        return []
+
+    return (
+        db.query(Product)
+        .filter(
+            Product.variant_group_id == product.variant_group_id,
+            Product.is_active.is_(True),
+        )
+        .order_by(Product.color.asc())
+        .all()
+    )

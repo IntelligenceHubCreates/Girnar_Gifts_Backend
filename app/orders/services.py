@@ -1,34 +1,50 @@
-from datetime import datetime
+# app/orders/services.py
+from datetime import datetime, timezone
 from typing import List
-from sqlalchemy.orm import Session
+
+from sqlalchemy.orm import Session, joinedload
 
 from app.orders.models import Order, OrderItem
 from app.orders.schemas import OrderCreate, OrderUpdate
 from app.products.models import Product
-from sqlalchemy.orm import joinedload
+
 
 def create_order(db: Session, user_id: str, order: dict) -> Order:
     """Create a new order"""
+    from app.coupons.services import redeem_coupon   # local import avoids any cycle
     try:
         db_order = Order(
-            user_id=user_id,
-            shipping_address=order['shipping_address'],
-            total_amount=order['total_amount'],
-            status=order['status'],
-            order_date=datetime.utcnow()
+            user_id          = user_id,
+            shipping_address = order['shipping_address'],
+            total_amount     = order['total_amount'],
+            status           = order['status'],
+            order_date       = datetime.utcnow(),
+            # ── breakdown (NEW) ──
+            subtotal         = order.get('subtotal'),
+            discount_amount  = order.get('discount_amount') or 0,
+            delivery_fee     = order.get('delivery_fee') or 0,
+            coupon_code      = order.get('coupon_code'),
+            gift_message = (order.get('gift_message') or '').strip()[:500] or None,
         )
         db.add(db_order)
-        db.flush()  # Get the order ID without committing
+        db.flush()
 
-        # Create order items
         for item in order['order_items']:
             db_item = OrderItem(
-                order_id=db_order.id,
-                product_id=item['product_id'],
-                quantity=item['quantity'],
-                price=item['price']
+                order_id   = db_order.id,
+                product_id = item['product_id'],
+                quantity   = item['quantity'],
+                price      = item['price'],
+                color      = item.get('color')     or None,
+                color_hex  = item.get('color_hex') or None,
+                image      = item.get('image')     or None,
             )
             db.add(db_item)
+
+        # ── Redeem the coupon in the SAME transaction ──
+        # ⚠️ SEE THE PLACEMENT NOTE BELOW before shipping.
+        if order.get('coupon_code'):
+            redeem_coupon(db, order['coupon_code'])
 
         db.commit()
         db.refresh(db_order)
@@ -41,14 +57,16 @@ def get_user_orders(db: Session, user_id: str) -> List[Order]:
     """Get all orders for user"""
     return db.query(Order).filter(Order.user_id == user_id).all()
 
+
 def get_order(db: Session, user_id: str, order_id: str) -> Order:
     """Get specific order for user"""
     return db.query(Order).filter(
-        Order.id == order_id,
+        Order.id      == order_id,
         Order.user_id == user_id
     ).options(
         joinedload(Order.order_items).joinedload(OrderItem.product)
     ).first()
+
 
 def update_order(
     db: Session,
@@ -61,10 +79,10 @@ def update_order(
         db_order = get_order(db, user_id, order_id)
         if not db_order:
             return None
-        
+
         for key, value in order.model_dump(exclude_unset=True).items():
             setattr(db_order, key, value)
-        
+
         db_order.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(db_order)
@@ -73,15 +91,18 @@ def update_order(
         db.rollback()
         raise e
 
+
 def get_order_items(db: Session, order_id: str) -> List[OrderItem]:
     """Get all items for an order"""
     return db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+
 
 def get_all_orders_admin(db: Session) -> List[Order]:
     """Get all orders for admin"""
     return db.query(Order).options(
         joinedload(Order.order_items).joinedload(OrderItem.product)
     ).all()
+
 
 def update_order_status_admin(
     db: Session,
@@ -93,12 +114,38 @@ def update_order_status_admin(
         db_order = db.query(Order).filter(Order.id == order_id).first()
         if not db_order:
             return None
-        
-        db_order.status = status
+
+        db_order.status     = status
         db_order.updated_at = datetime.utcnow()
+        # Stamp delivery time ONCE — the first time this order becomes
+        # "delivered". Set-if-None preserves the original delivery date even if
+        # an admin later toggles status back and forth, so the return window is
+        # never silently reset. Stored tz-aware (UTC) to match the column and to
+        # compare cleanly against a timezone-aware "now" in Stage-3 eligibility
+        # checks (avoids the naive/aware TypeError we hit in Phase 11).
+        if (status or "").lower() == "delivered" and db_order.delivered_at is None:
+            db_order.delivered_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(db_order)
         return db_order
     except Exception as e:
         db.rollback()
         raise e
+    
+# ── Shipping integration (Phase 14) ────────────────────────────────
+# Single source of truth for writing an order's status from the shipping
+# subsystem. Reuses the delivered-stamp behaviour so the return window starts
+# correctly whether delivery is marked from the Orders page or the Shipping page.
+# Writes the EXACT lowercase status strings the order flow already uses.
+def apply_order_status_sync(db: Session, order_id: str, new_status: str) -> "Order":
+    """Set an order's status (and stamp delivered_at once, set-if-None) from a
+    shipment transition. Does NOT commit — caller owns the transaction so the
+    shipment + order changes commit atomically together."""
+    db_order = db.query(Order).filter(Order.id == order_id).first()
+    if not db_order:
+        return None
+    db_order.status     = new_status
+    db_order.updated_at = datetime.utcnow()
+    if (new_status or "").lower() == "delivered" and db_order.delivered_at is None:
+        db_order.delivered_at = datetime.now(timezone.utc)
+    return db_order

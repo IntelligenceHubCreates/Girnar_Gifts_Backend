@@ -3,7 +3,7 @@ import random
 import string
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from typing import Union, Any
+from typing import Union, Any, Optional, Tuple
 from jose import jwt
 from app.db import get_db, get_db_manually
 from fastapi import Request, HTTPException
@@ -22,8 +22,9 @@ COOKIE_ACCESS_KEY = 'user_session'
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def get_user_by_id(db: Session, user_id: str) -> Users:
-    """Get user by ID"""
+
+def get_user_by_id(db: Session, user_id: str) -> Optional[Users]:
+    """Get user by ID."""
     return db.query(Users).filter(Users.id == user_id).first()
 
 
@@ -32,51 +33,92 @@ def create_access_token(subject: Union[str, Any], session: Session, expires_delt
         expires_delta = datetime.utcnow() + expires_delta
     else:
         expires_delta = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     to_encode = {"exp": expires_delta, "sub": str(subject)}
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, ALGORITHM)
     return encoded_jwt
 
-def decodeJWT(jwtoken: str, db: Session, return_object: bool = False):
+
+def _extract_token(request: Request) -> Optional[str]:
+    """
+    Resolve a JWT from either the legacy session cookie OR the
+    Authorization: Bearer <token> header (used by the NextAuth flow).
+    """
+    token = request.cookies.get(COOKIE_ACCESS_KEY)
+    if token:
+        return token
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header.split(" ", 1)[1].strip() or None
+
+    return None
+
+
+def decodeJWT(jwtoken: str, db: Session, return_object: bool = False) -> Tuple[Any, Any]:
+    """
+    Decode + verify a JWT.
+
+    ALWAYS returns a 2-tuple (payload_or_user, error) so every caller can safely
+    do `payload, err = decodeJWT(...)`.
+
+    - return_object=False -> payload is a plain dict (shape used by JWTBearer)
+    - return_object=True  -> payload is the Users ORM object
+    """
     try:
-        # Decode and verify the token
         payload = jwt.decode(jwtoken, JWT_SECRET_KEY, ALGORITHM)
-        if(payload):
-            user = get_user_by_id(db, payload['sub'])
-            if user:
-                if return_object:
-                    return user
-
-                return {
-                    'email': user.email, 
-                    'id': user.id, 
-                    'role': user.role, 
-                    'confirmed': user.confirmed, 
-                    'created_at': user.created_at,
-                    "name": user.name,
-                    "phone": user.phone,
-                    "address": user.addresses
-                }, None
-            return None, None
-        return None, None
-    except Exception as e:
-        print("Error", e)
-        return None, e
-
-async def get_current_user(request: Request, db: Session, return_object: bool = False):
-    try:
-        token = request.cookies.get(COOKIE_ACCESS_KEY)
-        if not token:
-            return None
-        
-        payload, error_message = decodeJWT(token, db)
         if not payload:
-            return None, error_message
-            
+            return None, "Invalid token payload"
+
+        user = get_user_by_id(db, payload.get('sub'))
+        if not user:
+            return None, "User not found"
+
+        if return_object:
+            return user, None
+
+        return {
+            'email': user.email,
+            'id': user.id,
+            'role': user.role,
+            'confirmed': user.confirmed,
+            'created_at': user.created_at,
+            "name": user.name,
+            "phone": user.phone,
+            "address": user.addresses,
+        }, None
+    except Exception as e:
+        print("Error decoding JWT:", e)
+        return None, str(e)
+
+
+async def get_current_user(
+    request: Request,
+    db: Session,
+    return_object: bool = False,
+) -> Tuple[Any, Any]:
+    """
+    Resolve the current user from cookie OR Authorization header.
+
+    ALWAYS returns a 2-tuple (user, error_message). This is critical: callers do
+    `current_user, error_message = await get_current_user(...)`, so returning a
+    bare `None` (as the original did when no cookie was present) caused a
+    `TypeError: cannot unpack non-iterable NoneType` on every NextAuth request.
+    """
+    try:
+        token = _extract_token(request)
+        if not token:
+            return None, "Not authenticated"
+
+        payload, error_message = decodeJWT(token, db, return_object)
+        if not payload:
+            return None, error_message or "Invalid or expired token"
+
         return payload, None
     except Exception as e:
         print(f"Error getting current user: {str(e)}")
-        return None, e
+        return None, str(e)
+
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
@@ -87,10 +129,10 @@ class JWTBearer(HTTPBearer):
         access_key = credentials.get(COOKIE_ACCESS_KEY, None)
 
         if not access_key:
-            # Check Authorization header
+            # Check Authorization header (NextAuth bearer flow)
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
-                access_key = auth_header.split(" ")[1]
+                access_key = auth_header.split(" ", 1)[1].strip()
 
         if access_key:
             db = get_db_manually()
@@ -101,7 +143,7 @@ class JWTBearer(HTTPBearer):
                     if self.auto_error:
                         raise HTTPException(status_code=401, detail="Invalid token or expired token.")
                     return None
-            finally: 
+            finally:
                 db.close()
             return user
         else:
@@ -109,13 +151,12 @@ class JWTBearer(HTTPBearer):
                 raise HTTPException(status_code=401, detail="Invalid authorization code.")
             return None
 
-    def verify_jwt(self, jwtoken: str, db) -> bool:
+    def verify_jwt(self, jwtoken: str, db) -> Tuple[bool, Any]:
         isTokenValid: bool = False
         try:
             payload, e = decodeJWT(jwtoken, db)
-        except:
+        except Exception:
             payload = None
         if payload:
             return True, payload
-        
         return isTokenValid, None
