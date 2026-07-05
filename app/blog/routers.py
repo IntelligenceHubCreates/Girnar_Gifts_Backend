@@ -204,7 +204,7 @@ async def upload_blog_image(
     if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(400, "Image exceeds 10 MB")
     try:
-        result = cloudinary.uploader.upload(contents, folder="littleloot/blog", resource_type="image")
+        result = cloudinary.uploader.upload(contents, folder=f"{settings.cloudinary_folder}/blog", resource_type="image")
     except Exception as exc:
         raise HTTPException(500, f"Cloudinary upload failed: {exc}")
     return {"url": result["secure_url"], "public_id": result["public_id"]}

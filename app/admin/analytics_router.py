@@ -1,6 +1,6 @@
 # app/admin/analytics_router.py
 """
-Real-data analytics for the Little Loot admin panel.
+Real-data analytics for the Girnar Gifts admin panel.
 Every number here is computed from actual DB rows — no fabricated metrics.
 
 Endpoints:

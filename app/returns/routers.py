@@ -133,7 +133,7 @@ async def upload_return_proof(
     )
     try:
         result = cloudinary.uploader.upload(
-            contents, folder="littleloot/returns", resource_type="auto",
+            contents, folder=f"{env.cloudinary_folder}/returns", resource_type="auto",
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Cloudinary upload failed: {exc}")

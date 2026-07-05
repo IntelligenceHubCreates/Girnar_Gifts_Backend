@@ -7,6 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 from app.db import get_db
+from app.settings import settings
 from app.users.utils import get_current_user, get_user_by_id
 from app.users.models import Users
 
@@ -179,7 +180,7 @@ async def upload_avatar(
     try:
         result = cloudinary.uploader.upload(
             contents,
-            folder="littleloot/avatars",
+            folder=f"{settings.cloudinary_folder}/avatars",
             public_id=f"user_{user.id}_avatar",
             overwrite=True,
             transformation=[

@@ -17,7 +17,7 @@ The import + Depends(...) below MUST match that router. If your admin returns ro
 use e.g. Depends(get_current_admin) or a role check, swap it here identically.
 
 CLOUDINARY NOTE (verify): the label upload reuses the SAME helper/pattern as the
-returns proof upload (littleloot/returns). Point _upload_label_file at it; if returns
+returns proof upload ({CLOUDINARY_FOLDER}/returns). Point _upload_label_file at it; if returns
 inlines cloudinary.uploader.upload, mirror that call here.
 """
 from __future__ import annotations
@@ -137,7 +137,7 @@ def attach_label_json(shipment_id: str, body: sch.LabelIn, session: Session = De
 # … or multipart upload path (admin uploads a PDF/image → Cloudinary → service).
 async def _upload_label_file(file: UploadFile) -> dict:
     """Mirror the returns proof-upload pattern exactly: read bytes, configure
-    Cloudinary from env, upload to 'littleloot/labels' with resource_type='auto'."""
+    Cloudinary from env, upload to '{CLOUDINARY_FOLDER}/labels' with resource_type='auto'."""
     allowed = {"application/pdf", "image/png", "image/jpeg", "image/webp"}
     if (file.content_type or "") not in allowed:
         raise HTTPException(status_code=400, detail="Label must be a PDF or image (PNG/JPG/WebP)")
@@ -159,7 +159,7 @@ async def _upload_label_file(file: UploadFile) -> dict:
     )
     try:
         result = cloudinary.uploader.upload(
-            contents, folder="littleloot/labels", resource_type="auto",
+            contents, folder=f"{env.cloudinary_folder}/labels", resource_type="auto",
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Label upload failed: {exc}")

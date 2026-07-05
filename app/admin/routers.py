@@ -1,6 +1,6 @@
 # app/admin/routers.py
 """
-Admin-only API endpoints for the Little Loot admin panel.
+Admin-only API endpoints for the Girnar Gifts admin panel.
 All routes require JWT with role=1 (admin).
 
 Mount in main.py:
@@ -20,6 +20,7 @@ from sqlalchemy import func, text
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.db import get_db
+from app.settings import settings
 from app.users.utils import JWTBearer
 
 # ── Models ────────────────────────────────────────────────────────
@@ -840,9 +841,9 @@ async def get_analytics(
 
 SETTINGS_DEFAULTS: Dict[str, Any] = {
     # Store info
-    "store_name":              "Little Loot",
-    "store_url":               "littleloot.in",
-    "contact_email":           "hello@littleloot.in",
+    "store_name":              settings.brand_name,
+    "store_url":               "girnargifts.com",
+    "contact_email":           settings.brand_support_email,
     "support_phone":           "",
     "store_address":           "",
     "gst_number":              "",
@@ -865,7 +866,7 @@ SETTINGS_DEFAULTS: Dict[str, Any] = {
     "wallet_enabled":          True,
     "online_payment_enabled":  True,
     # Order settings
-    "order_prefix":            "LL",
+    "order_prefix":            "GG",
     "invoice_prefix":          "INV",
     "low_stock_threshold":     10,
     "return_window_days":      7,    # days after delivery a return may be requested
@@ -1005,7 +1006,7 @@ async def upload_store_logo(
     if len(contents) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Logo exceeds 5 MB")
     try:
-        result = cloudinary.uploader.upload(contents, folder="littleloot/store", resource_type="image")
+        result = cloudinary.uploader.upload(contents, folder=f"{settings.cloudinary_folder}/store", resource_type="image")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Upload failed: {exc}")
 

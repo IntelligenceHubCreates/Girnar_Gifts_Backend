@@ -138,9 +138,9 @@ async def create_payment_order(
     try:
         rz_order = client.order.create({
             "amount": amount_paise, "currency": "INR",
-            "receipt": f"rcpt_{uuid.uuid4().hex[:12]}",
+            "receipt": f"{settings.razorpay_receipt_prefix}{uuid.uuid4().hex[:12]}",
             "payment_capture": 1,
-            "notes": {"source": "LittleLoot"},
+            "notes": {"source": settings.brand_name},
         })
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Razorpay error: {str(e)}")

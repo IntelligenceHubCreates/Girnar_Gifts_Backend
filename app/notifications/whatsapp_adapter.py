@@ -21,6 +21,8 @@ from __future__ import annotations
 import os
 from typing import List, Tuple, Optional
 
+from app.settings import settings
+
 WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "aisensy")
 WHATSAPP_API_KEY  = os.getenv("WHATSAPP_API_KEY", "")
 WHATSAPP_SENDER   = os.getenv("WHATSAPP_SENDER", "")
@@ -40,7 +42,7 @@ def build_payload(phone_e164: str, template_name: str, variables: List[str],
         "apiKey": WHATSAPP_API_KEY,                 # filled from env when live
         "campaignName": campaign_name or template_name,
         "destination": phone_e164,
-        "userName": "Little Loot",
+        "userName": settings.brand_name,
         "templateParams": [str(v) for v in variables],
         # "media": {...}  # add if a template uses header media (e.g. label image)
     }

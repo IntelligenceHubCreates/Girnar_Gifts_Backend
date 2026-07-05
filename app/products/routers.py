@@ -817,7 +817,7 @@ async def upload_product_image(
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in {"png", "jpg", "jpeg", "webp"}:
         raise HTTPException(status_code=400, detail="File type not allowed")
-    result = cloudinary.uploader.upload(await file.read(), folder="littleloot/products", resource_type="image")
+    result = cloudinary.uploader.upload(await file.read(), folder=f"{settings.cloudinary_folder}/products", resource_type="image")
     product = session.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -872,14 +872,14 @@ async def upload_product_video(
         if len(contents) > 10 * 1024 * 1024:
             result = cloudinary.uploader.upload_large(
                 io.BytesIO(contents),
-                folder="littleloot/products/videos",
+                folder=f"{settings.cloudinary_folder}/products/videos",
                 resource_type="video",
                 chunk_size=6 * 1024 * 1024,
             )
         else:
             result = cloudinary.uploader.upload(
                 contents,
-                folder="littleloot/products/videos",
+                folder=f"{settings.cloudinary_folder}/products/videos",
                 resource_type="video",
             )
     except Exception as exc:
@@ -1031,7 +1031,7 @@ async def upload_color_images(
         try:
             result = cloudinary.uploader.upload(
                 contents,
-                folder="littleloot/products/colors",
+                folder=f"{settings.cloudinary_folder}/products/colors",
                 resource_type="image",
             )
         except Exception as exc:

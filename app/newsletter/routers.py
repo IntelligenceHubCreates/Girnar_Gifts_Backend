@@ -5,7 +5,7 @@ FastAPI newsletter endpoints with welcome email via Resend.
 Setup:
 1. pip install resend
 2. Add to .env:  RESEND_API_KEY=re_xxxxxxxxxxxx
-3. Add to .env:  NEWSLETTER_FROM_EMAIL=hello@littleloot.in
+3. Add to .env:  NEWSLETTER_FROM_EMAIL=support@girnargifts.com
 4. Mount in main.py:
        from app.newsletter.routers import newsletter_router
        app.include_router(newsletter_router)
@@ -23,6 +23,7 @@ import resend
 
 from app.db import get_db
 from app.models import Base   # adjust to your Base import path
+from app.settings import settings
 
 log = logging.getLogger(__name__)
 
@@ -30,9 +31,9 @@ newsletter_router = APIRouter(prefix="/api/newsletter", tags=["Newsletter"])
 
 # ── Config ────────────────────────────────────────────────────────
 resend.api_key  = os.getenv("RESEND_API_KEY", "")
-FROM_EMAIL      = os.getenv("NEWSLETTER_FROM_EMAIL", "hello@littleloot.in")
-FROM_NAME       = "Little Loot"
-STORE_URL       = os.getenv("NEXT_PUBLIC_FRONTEND_URL", "https://littleloot.in")
+FROM_EMAIL      = os.getenv("NEWSLETTER_FROM_EMAIL", settings.brand_support_email)
+FROM_NAME       = settings.brand_name
+STORE_URL       = os.getenv("NEXT_PUBLIC_FRONTEND_URL", "https://girnargifts.com")
 
 
 # ── Model ─────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ def send_welcome_email(to_email: str) -> None:
         resend.Emails.send(resend.SendEmailRequest({
             "from":    f"{FROM_NAME} <{FROM_EMAIL}>",
             "to":      [to_email],
-            "subject": "Welcome to the Little Loot Family! 🎁",
+            "subject": f"Welcome to the {FROM_NAME} Family! 🎁",
             "html":    _welcome_html(to_email),
         }))
         log.info("[newsletter] Welcome email sent to %s", to_email)
@@ -81,7 +82,7 @@ def _welcome_html(email: str) -> str:
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Welcome to Little Loot!</title>
+  <title>Welcome to {FROM_NAME}!</title>
 </head>
 <body style="margin:0;padding:0;background:#f9f9f9;font-family:'Nunito',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;padding:32px 0;">
@@ -97,7 +98,7 @@ def _welcome_html(email: str) -> str:
               <div style="font-size:48px;margin-bottom:8px;">🎁</div>
               <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;
                          font-family:'Nunito',Arial,sans-serif;">
-                Welcome to the Little Loot Family!
+                Welcome to the {FROM_NAME} Family!
               </h1>
             </td>
           </tr>
@@ -109,7 +110,7 @@ def _welcome_html(email: str) -> str:
                 Hi there! 👋
               </p>
               <p style="margin:0 0 16px;font-size:16px;color:#444;line-height:1.6;">
-                Thank you for joining the <strong>Little Loot</strong> family.
+                Thank you for joining the <strong>{FROM_NAME}</strong> family.
                 You're now on the list for:
               </p>
 
@@ -125,7 +126,7 @@ def _welcome_html(email: str) -> str:
                       📦 <strong>New arrivals</strong> — first look at fresh products
                     </p>
                     <p style="margin:0;font-size:15px;color:#444;">
-                      👶 <strong>Parenting tips</strong> — expert advice for your little ones
+                      🎁 <strong>Gifting ideas</strong> — curated picks for every occasion
                     </p>
                   </td>
                 </tr>
@@ -152,7 +153,7 @@ def _welcome_html(email: str) -> str:
             <td style="background:#f9f9f9;padding:24px 40px;text-align:center;
                        border-top:1px solid #eee;">
               <p style="margin:0 0 8px;font-size:13px;color:#999;">
-                You received this because you subscribed at littleloot.in
+                You received this because you subscribed at {STORE_URL.replace('https://', '').replace('http://', '')}
               </p>
               <p style="margin:0;font-size:13px;color:#999;">
                 <a href="{unsubscribe_url}"
@@ -229,7 +230,7 @@ async def unsubscribe(email: str, session: Session = Depends(get_db)):
     <head>
       <meta charset="UTF-8"/>
       <meta name="viewport" content="width=device-width,initial-scale=1"/>
-      <title>Unsubscribed — Little Loot</title>
+      <title>Unsubscribed — {FROM_NAME}</title>
       <style>
         body {{ margin:0; font-family: Arial, sans-serif; background: #f9f9f9;
                 display: flex; align-items: center; justify-content: center;
@@ -246,7 +247,7 @@ async def unsubscribe(email: str, session: Session = Depends(get_db)):
       <div class="card">
         <div style="font-size:48px;margin-bottom:16px;">👋</div>
         <h1>You've been unsubscribed</h1>
-        <p>Sorry to see you go! You won't receive any more emails from Little Loot.</p>
+        <p>Sorry to see you go! You won't receive any more emails from {FROM_NAME}.</p>
         <a href="{STORE_URL}">Visit the store</a>
       </div>
     </body>
