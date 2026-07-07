@@ -15,8 +15,9 @@ async def upload_images(file_paths):
     for file_path in file_paths:
         try:
             file_content = await file_path.read()
-            # print("HELLOJI",file_content)
-            response = cloudinary.uploader.upload(file_content, tags = ["dev"])
+            response = cloudinary.uploader.upload(
+                file_content, folder=f"{settings.cloudinary_folder}/products",
+            )
             uploaded_images.append({
                 "url": response["secure_url"],
                 "public_id": response["public_id"]

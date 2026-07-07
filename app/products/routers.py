@@ -746,6 +746,7 @@ async def get_product_detail(id: str, session: Session = Depends(get_db)):
 
 @product_router.post("", response_model=ProductBase, status_code=201)
 async def add_new_product(
+    request:               Request,
     productName:           str                       = Form(...),
     productCategory:       str                       = Form(...),
     productCategorySlug:   Optional[str]             = Form(None),
@@ -754,9 +755,6 @@ async def add_new_product(
     productCount:          int                       = Form(...),
     productDiscount:       int                       = Form(...),
     productDiscountAmount: int                       = Form(...),
-    productImages:         Optional[List[UploadFile]] = File(None),
-    productImageUrls:      Optional[List[str]]       = Form(None),
-    productDetails:        Optional[List[str]]        = Form(None),
     offerExpirationDate:   Optional[datetime]        = Form(None),
     productColor:          Optional[str]    = Form(None),
     productColorHex:       Optional[str]    = Form(None),
@@ -779,13 +777,22 @@ async def add_new_product(
     if productPrice <= 0:
         raise HTTPException(status_code=400, detail="Price must be greater than 0")
 
+    # fastapi==0.100.0 + pydantic==2.7.0 fail to coerce a List[...]-typed
+    # Form/File field into a list when exactly one value is submitted
+    # (raises a spurious 422 "Input should be a valid list"). Reading these
+    # three straight off the raw form sidesteps it - .getlist() always
+    # returns a list, whether 0, 1, or many values were sent.
+    form             = await request.form()
+    productImages    = form.getlist("productImages")
+    productImageUrls = [u for u in form.getlist("productImageUrls") if isinstance(u, str) and u]
+    productDetails   = [d for d in form.getlist("productDetails") if isinstance(d, str) and d]
+
     images = await upload_images(productImages) if productImages else []
     if productImageUrls:
-        images += [{"url": u, "public_id": "direct_url"} for u in productImageUrls if u]
+        images += [{"url": u, "public_id": "direct_url"} for u in productImageUrls]
 
     category_id = _resolve_category(productCategory, productCategorySlug, session)
 
-    print("NES", productDetails, type(productDetails))
     new_product = Product(
         name=productName,
         category=productCategory,
@@ -814,8 +821,6 @@ async def add_new_product(
         seo_description=productSeoDescription or None,
     )
     _sync_product_subcategory(new_product, session)
-
-    print("AFTER", new_product.details, type(new_product.details))
 
     session.add(new_product)
     session.commit()
@@ -913,6 +918,7 @@ async def upload_product_video(
 @product_router.put("/{id}", response_model=ProductBase)
 async def update_product(
     id:                    str,
+    request:               Request,
     productName:           str                       = Form(...),
     productCategory:       str                       = Form(...),
     productCategorySlug:   Optional[str]             = Form(None),
@@ -921,9 +927,6 @@ async def update_product(
     productCount:          int                       = Form(...),
     productDiscount:       int                       = Form(...),
     productDiscountAmount: int                       = Form(...),
-    productImages:         List[UploadFile]          = File(None),
-    productImageUrls:      List[str]                 = Form(None),
-    productDetails:        List[str]                 = Form(...),
     oldProductImages:      str                       = Form(...),
     productColor:          Optional[str]    = Form(None),
     productColorHex:       Optional[str]    = Form(None),
@@ -949,10 +952,17 @@ async def update_product(
 
     product = _get_product_or_404(id, session)
 
+    # See add_new_product for why these are read off the raw form instead of
+    # declared as List[...]-typed Form/File parameters.
+    form             = await request.form()
+    productImages    = form.getlist("productImages")
+    productImageUrls = [u for u in form.getlist("productImageUrls") if isinstance(u, str) and u]
+    productDetails   = [d for d in form.getlist("productDetails") if isinstance(d, str) and d]
+
     existing_images = json.loads(oldProductImages) if oldProductImages else []
     new_uploads = await upload_images(productImages or [])
     if productImageUrls:
-        new_uploads += [{"url": u, "public_id": "direct_url"} for u in productImageUrls if u]
+        new_uploads += [{"url": u, "public_id": "direct_url"} for u in productImageUrls]
 
     category_id = _resolve_category(productCategory, productCategorySlug, session)
 
