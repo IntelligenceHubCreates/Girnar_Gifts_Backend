@@ -1,14 +1,17 @@
 # Render Blueprint for Girnar Gifts backend.
 #
-# FREE-TIER TESTING CONFIG - see DEPLOYMENT_PLAN.md for the tradeoffs:
-#   - `plan: free` web service spins down after 15 min idle (cold starts
-#     on the next request - fine for private testing, not for real traffic).
-#   - `plan: free` Postgres is DELETED 30 DAYS after creation, no backups,
-#     no PITR. If testing runs close to a month, export/back up the DB
-#     (pg_dump) well before day 30, and upgrade both plans below to
-#     `starter` (web) / a paid Postgres tier before accepting real orders.
-# When ready to go live, change `plan: free` -> `plan: starter` on the web
-# service and the database's plan below, and re-apply this Blueprint.
+# The database is on a PAID plan (basic-256mb, ~$6-7/mo - verify current
+# price at render.com/pricing#postgresql) on purpose: real product data
+# starts going in immediately, and Render's free Postgres is hard-deleted
+# 30 days after creation with zero backups. Any paid tier gets automatic
+# point-in-time recovery (3-day window on a Hobby workspace, 7-day on
+# Pro+) from day one - see DEPLOYMENT_PLAN.md for detail.
+#
+# The web service stays on `plan: free` for now - it holds no data itself
+# (everything persists in the database above or in Cloudinary), so the
+# only free-tier tradeoff there is a 10-30s cold start after 15 min idle.
+# Bump this to `starter` (no downtime, just edit + re-apply the Blueprint)
+# once you're ready for always-on / real customer traffic.
 services:
   - type: web
     name: girnar-gifts-api
@@ -80,4 +83,4 @@ databases:
   - name: girnar-gifts-db
     databaseName: girnar_gifts
     region: singapore
-    plan: free
+    plan: basic-256mb
