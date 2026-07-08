@@ -1,32 +1,32 @@
 # Render Blueprint for Girnar Gifts backend.
 #
+# Workspace is on Render Pro, which raises Postgres PITR retention to 7
+# days (vs 3 on Hobby) - applies automatically, nothing to configure here.
+#
 # The database is on a PAID plan (basic-256mb, ~$6-7/mo - verify current
 # price at render.com/pricing#postgresql) on purpose: real product data
 # starts going in immediately, and Render's free Postgres is hard-deleted
-# 30 days after creation with zero backups. Any paid tier gets automatic
-# point-in-time recovery (3-day window on a Hobby workspace, 7-day on
-# Pro+) from day one - see DEPLOYMENT_PLAN.md for detail.
+# 30 days after creation with zero backups.
 #
-# The web service stays on `plan: free` for now - it holds no data itself
-# (everything persists in the database above or in Cloudinary), so the
-# only free-tier tradeoff there is a 10-30s cold start after 15 min idle.
-# Bump this to `starter` (no downtime, just edit + re-apply the Blueprint)
-# once you're ready for always-on / real customer traffic.
+# Web service is on `starter` (always-on, no cold starts) - the client
+# starts adding products and testing the live site immediately, so the
+# free tier's 10-30s cold-start-after-idle isn't worth the confusion
+# during that.
 #
-# No preDeployCommand: Render's free web service plan doesn't support it.
-# Not needed here anyway - app_entrypoint.sh already runs
+# No preDeployCommand: app_entrypoint.sh already runs
 # `alembic upgrade head` on every container boot, before starting uvicorn,
 # which happens on every deploy regardless (this is the same mechanism
-# that's been applying migrations in local dev all along). Revisit only if
-# you move to multiple instances, where migrating from every instance on
-# every boot could race - a single free-tier instance never hits that.
+# that's been applying migrations in local dev all along) - redundant to
+# add it back now that `starter` supports it. Revisit only if this ever
+# moves to multiple instances, where migrating from every instance on
+# every boot could race.
 services:
   - type: web
     name: girnar-gifts-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: singapore
-    plan: free
+    plan: starter
     healthCheckPath: /health
     autoDeploy: true
     envVars:
