@@ -1,7 +1,7 @@
 """sync_models_schema_drift
 
 Revision ID: 27482216f0e8
-Revises: 6707115b61f9
+Revises: 6499c4edd4d2
 Create Date: 2026-07-05 11:20:02.296708
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '27482216f0e8'
-down_revision: Union[str, None] = '6707115b61f9'
+down_revision: Union[str, None] = '6499c4edd4d2'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
