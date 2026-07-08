@@ -157,6 +157,7 @@ async def get_products_by_category_slug(
 
     q = session.query(Product).filter(
         Product.is_active.is_(True),
+        Product.is_custom_bundle.isnot(True),
         Product.category_id.in_(all_ids),
     )
 
@@ -446,7 +447,11 @@ async def get_featured_products(
 ):
     products = (
         session.query(Product)
-        .filter(Product.is_active.is_(True), Product.is_featured.is_(True))
+        .filter(
+            Product.is_active.is_(True),
+            Product.is_featured.is_(True),
+            Product.is_custom_bundle.isnot(True),
+        )
         .order_by(Product.created_at.desc())
         .limit(limit)
         .all()
@@ -471,6 +476,7 @@ async def search_products(
 
     base_q = session.query(Product).filter(
         Product.is_active.is_(True),
+        Product.is_custom_bundle.isnot(True),
         or_(
             Product.name.ilike(term),
             Product.category.ilike(term),
@@ -501,6 +507,7 @@ async def search_products(
         session.query(Product)
         .filter(
             Product.is_active.is_(True),
+            Product.is_custom_bundle.isnot(True),
             or_(
                 Product.name.ilike(term),
                 Product.category.ilike(term),
@@ -540,6 +547,7 @@ async def get_product_list(
     min_price:      Optional[int]  = Query(None, ge=0),
     max_price:      Optional[int]  = Query(None, ge=0),
     sort_by:        str           = Query("featured", regex="^(featured|price_asc|price_desc|newest|rating|stock_asc|stock_desc)$"),
+    include_bundles: bool         = Query(False, description="Admin: include customer-built hamper bundles"),
     session:        Session       = Depends(get_db),
 ):
     q = session.query(Product)
@@ -551,6 +559,11 @@ async def get_product_list(
         q = q.filter(Product.is_active.is_(is_active))
     elif not include_inactive:
         q = q.filter(Product.is_active.is_(True))
+
+    # Customer-built hampers are real Product rows (see build-your-own-hamper
+    # feature) but shouldn't clutter the normal catalog/search/admin list.
+    if not include_bundles:
+        q = q.filter(Product.is_custom_bundle.isnot(True))
 
     effective_slug = sub_slug or category_slug
 

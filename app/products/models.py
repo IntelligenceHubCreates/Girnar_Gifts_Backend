@@ -99,6 +99,12 @@ class Product(Base):
     personalisation_options = Column(JSON, nullable=False, default=list)
     seo_title             = Column(String(255), nullable=True)
     seo_description       = Column(String(500), nullable=True)
+    # ─── Build-your-own-hamper: a hamper is a real Product row (so it
+    # reuses the existing cart/order pipeline unchanged) flagged so
+    # storefront listings can exclude it. bundle_items snapshots what
+    # went in: [{product_id, name, quantity, unit_price, image}, ...]
+    is_custom_bundle      = Column(Boolean, nullable=False, default=False)
+    bundle_items          = Column(JSON, nullable=True)
 
     # ─── Relationships ─────────────────────────────────────────────
     category_ref = relationship("Category", back_populates="products")
@@ -172,6 +178,8 @@ class ProductBase(BaseModel):
     personalisation_options: List[Any] = []
     seo_title:            Optional[str] = None
     seo_description:      Optional[str] = None
+    is_custom_bundle:     bool         = False
+    bundle_items:         Optional[List[Any]] = None
 
     class Config:
         from_attributes = True

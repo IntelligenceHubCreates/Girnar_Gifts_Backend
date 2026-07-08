@@ -68,6 +68,8 @@ class ProductResponse(BaseModel):
     is_active:            bool         = True
     offer_expiration_date: Optional[datetime]
     created_at:           Optional[datetime]
+    is_custom_bundle:     bool         = False
+    bundle_items:         Optional[List[Any]] = None
 
     class Config:
         from_attributes = True

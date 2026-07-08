@@ -21,6 +21,7 @@ from app.users import models as user_models
 from fastapi.middleware.cors import CORSMiddleware
 from app.admin.routers import admin_router, category_write_router
 from app.payments.routers import payment_router
+from app.hampers.routers import hamper_router
 from app.blog.routers import blog_router
 from app.admin.analytics_router import analytics_router
 from app.returns.routers import returns_router, admin_returns_router
@@ -127,6 +128,7 @@ server.include_router(rating_router)
 server.include_router(admin_router)
 server.include_router(category_write_router)
 server.include_router(payment_router)
+server.include_router(hamper_router)
 server.include_router(newsletter_router)
 server.include_router(coupon_router)  
 server.include_router(blog_router)
