@@ -94,6 +94,37 @@ def _get_product_or_404(product_id: str, session: Session) -> Product:
     return product
 
 
+def _attach_rating_aggregates(products: list[Product], session: Session) -> None:
+    """
+    Batch-compute live avg rating / review count from the `ratings` table and
+    set them as transient attributes on each Product instance, so a single
+    ProductBase.from_orm(p) picks them up (rating/review_count are declared
+    on ProductBase but aren't real Product columns - see get_product_detail,
+    which does the same single-product aggregation this generalises to a list).
+    """
+    for p in products:
+        p.rating = 0.0
+        p.review_count = 0
+    ids = [p.id for p in products]
+    if not ids:
+        return
+    rows = (
+        session.query(
+            Rating.product_id,
+            func.avg(Rating.rating).label("avg"),
+            func.count(Rating.id).label("cnt"),
+        )
+        .filter(Rating.product_id.in_(ids))
+        .group_by(Rating.product_id)
+        .all()
+    )
+    agg_by_id = {row.product_id: (round(float(row.avg), 1), int(row.cnt)) for row in rows}
+    for p in products:
+        agg = agg_by_id.get(p.id)
+        if agg:
+            p.rating, p.review_count = agg
+
+
 def _resolve_category(name: Optional[str], slug: Optional[str], session: Session) -> Optional[UUID]:
     if slug:
         cat = session.query(Category).filter(Category.slug == slug).first()
@@ -182,6 +213,7 @@ async def get_products_by_category_slug(
             )
 
     products = q.offset(skip).limit(limit).all()
+    _attach_rating_aggregates(products, session)
 
     return ProductListResponse(
         data=[ProductBase.from_orm(p) for p in products],
@@ -456,6 +488,7 @@ async def get_featured_products(
         .limit(limit)
         .all()
     )
+    _attach_rating_aggregates(products, session)
     return ProductListResponse(data=[ProductBase.from_orm(p) for p in products], totalCount=len(products))
 
 
@@ -501,6 +534,7 @@ async def search_products(
         )
 
     results = results_q.offset(skip).limit(limit).all()
+    _attach_rating_aggregates(results, session)
 
     # Count without limit for pagination (cap at 200 to avoid full scans)
     total = (
@@ -634,6 +668,7 @@ async def get_product_list(
         q = q.order_by(Product.is_featured.desc(), Product.created_at.desc(), Product.id.asc())
 
     products = q.offset(skip).limit(limit).all()
+    _attach_rating_aggregates(products, session)
 
     return ProductListResponse(
         data=[ProductBase.from_orm(p) for p in products],

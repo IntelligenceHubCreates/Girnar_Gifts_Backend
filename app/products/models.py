@@ -180,6 +180,11 @@ class ProductBase(BaseModel):
     seo_description:      Optional[str] = None
     is_custom_bundle:     bool         = False
     bundle_items:         Optional[List[Any]] = None
+    # Not real columns - computed at query time from the `ratings` table
+    # and set as transient attributes before serialisation (see
+    # _attach_rating_aggregates / get_product_detail in routers.py).
+    rating:               float        = 0.0
+    review_count:         int          = 0
 
     class Config:
         from_attributes = True

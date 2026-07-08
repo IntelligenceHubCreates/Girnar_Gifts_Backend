@@ -70,6 +70,8 @@ class ProductResponse(BaseModel):
     created_at:           Optional[datetime]
     is_custom_bundle:     bool         = False
     bundle_items:         Optional[List[Any]] = None
+    rating:               float        = 0.0
+    review_count:         int          = 0
 
     class Config:
         from_attributes = True
