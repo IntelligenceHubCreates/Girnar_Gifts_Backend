@@ -31,5 +31,8 @@ then
   uvicorn app.main:server --host=0.0.0.0 --reload
 else
   echo "Running in production mode"
-  uvicorn app.main:server --host=0.0.0.0 --reload
+  # Render assigns a dynamic $PORT and routes traffic only to that port;
+  # local docker-compose doesn't set PORT, so this still defaults to 8000
+  # (matching compose.girnar-local.yml's 8010->8000 mapping) unchanged.
+  uvicorn app.main:server --host=0.0.0.0 --port="${PORT:-8000}" --reload
 fi

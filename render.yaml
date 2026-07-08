@@ -1,0 +1,83 @@
+# Render Blueprint for Girnar Gifts backend.
+#
+# FREE-TIER TESTING CONFIG - see DEPLOYMENT_PLAN.md for the tradeoffs:
+#   - `plan: free` web service spins down after 15 min idle (cold starts
+#     on the next request - fine for private testing, not for real traffic).
+#   - `plan: free` Postgres is DELETED 30 DAYS after creation, no backups,
+#     no PITR. If testing runs close to a month, export/back up the DB
+#     (pg_dump) well before day 30, and upgrade both plans below to
+#     `starter` (web) / a paid Postgres tier before accepting real orders.
+# When ready to go live, change `plan: free` -> `plan: starter` on the web
+# service and the database's plan below, and re-apply this Blueprint.
+services:
+  - type: web
+    name: girnar-gifts-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    preDeployCommand: "alembic upgrade head"
+    envVars:
+      - key: ENV
+        value: production
+      - key: APP_NAME
+        value: Girnar Gifts API
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: girnar-gifts-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: girnar-gifts-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: girnar-gifts-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: girnar-gifts-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: girnar-gifts-db
+          property: database
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: CORS_ORIGINS
+        value: https://girnargifts.com,https://www.girnargifts.com
+      - key: RAZORPAY_RECEIPT_PREFIX
+        value: girnar_
+      - key: CLOUDINARY_FOLDER
+        value: girnar-gifts
+      - key: BRAND_NAME
+        value: Girnar Gifts
+      - key: BRAND_SUPPORT_EMAIL
+        value: support@girnargifts.com
+      # Secrets - set in the Render dashboard after the first deploy, do NOT commit:
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: BRAND_GSTIN
+        sync: false
+
+databases:
+  - name: girnar-gifts-db
+    databaseName: girnar_gifts
+    region: singapore
+    plan: free

@@ -3,6 +3,7 @@ import os
 
 import uvicorn
 from fastapi import FastAPI, Depends
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.users.routers import router as user_router
 from app.products.routers import router as product_router, category_router
@@ -144,6 +145,13 @@ server.include_router(shiprocket_webhook_router)  # shiprocket webhook (guarded 
 @server.get("/")
 async def root():
     return {"message": "Welcome to Girnar Gifts API"}
+
+@server.get("/health")
+async def health(db: Session = Depends(get_db)):
+    # Real DB ping, not just "process is alive" - Render's healthCheckPath
+    # gates zero-downtime deploys and free-tier wake-from-sleep on this.
+    db.execute(text("SELECT 1"))
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))
