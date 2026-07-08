@@ -12,6 +12,14 @@
 # only free-tier tradeoff there is a 10-30s cold start after 15 min idle.
 # Bump this to `starter` (no downtime, just edit + re-apply the Blueprint)
 # once you're ready for always-on / real customer traffic.
+#
+# No preDeployCommand: Render's free web service plan doesn't support it.
+# Not needed here anyway - app_entrypoint.sh already runs
+# `alembic upgrade head` on every container boot, before starting uvicorn,
+# which happens on every deploy regardless (this is the same mechanism
+# that's been applying migrations in local dev all along). Revisit only if
+# you move to multiple instances, where migrating from every instance on
+# every boot could race - a single free-tier instance never hits that.
 services:
   - type: web
     name: girnar-gifts-api
@@ -21,7 +29,6 @@ services:
     plan: free
     healthCheckPath: /health
     autoDeploy: true
-    preDeployCommand: "alembic upgrade head"
     envVars:
       - key: ENV
         value: production
