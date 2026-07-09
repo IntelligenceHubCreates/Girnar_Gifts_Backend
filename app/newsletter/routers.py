@@ -63,12 +63,12 @@ def send_welcome_email(to_email: str) -> None:
         log.warning("[newsletter] RESEND_API_KEY not set — skipping welcome email")
         return
     try:
-        resend.Emails.send(resend.SendEmailRequest({
+        resend.Emails.send({
             "from":    f"{FROM_NAME} <{FROM_EMAIL}>",
             "to":      [to_email],
             "subject": f"Welcome to the {FROM_NAME} Family! 🎁",
             "html":    _welcome_html(to_email),
-        }))
+        })
         log.info("[newsletter] Welcome email sent to %s", to_email)
     except Exception as exc:
         log.error("[newsletter] Failed to send welcome email to %s: %s", to_email, exc)

@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import razorpay
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSON
@@ -19,6 +19,7 @@ from app.settings import settings
 from app.users.utils import JWTBearer
 from app.orders.models import Order, OrderItem
 from app.orders.services import create_order as svc_create_order
+from app.orders.email import send_order_confirmation_email
 from app.products.models import Product
 
 payment_router = APIRouter(prefix="/api/payments", tags=["Payments"])
@@ -175,6 +176,7 @@ async def create_payment_order(
 @payment_router.post("/verify", response_model=VerifyPaymentResponse)
 async def verify_payment(
     body: VerifyPaymentRequest,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_db),
     user=Depends(JWTBearer()),
 ):
@@ -254,13 +256,36 @@ async def verify_payment(
         db_order = svc_create_order(session, uid, order_data)  # this now redeems coupon (see note)
         db_order.razorpay_payment_id = body.razorpay_payment_id
         # ── Deduct stock, once, in the paid transaction ──
+        email_items = []
         for it in items:
             p = session.query(Product).filter(Product.id == it.get("product_id")).first()
             if p:
                 p.count = max(0, (p.count or 0) - int(it.get("quantity", 1)))
+            email_items.append({
+                "name":     p.name if p else "Item",
+                "quantity": int(it.get("quantity", 1)),
+                "price":    float(it.get("price", 0)),
+                "color":    it.get("color") or None,
+                "image":    it.get("image") or None,
+            })
         session.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Order creation failed: {str(e)}")
+
+    to_email = user.get("email") if user else None
+    if to_email:
+        background_tasks.add_task(
+            send_order_confirmation_email,
+            to_email=to_email,
+            order_number=str(db_order.id)[:8].upper(),
+            items=email_items,
+            subtotal=float(order_data.get("subtotal") or order_data["total_amount"]),
+            discount_amount=float(order_data.get("discount_amount") or 0),
+            delivery_fee=float(order_data.get("delivery_fee") or 0),
+            total_amount=float(order_data["total_amount"]),
+            shipping_address=shipping_str,
+            gift_message=order_data.get("gift_message"),
+        )
 
     return VerifyPaymentResponse(
         success=True, payment_id=body.razorpay_payment_id,
