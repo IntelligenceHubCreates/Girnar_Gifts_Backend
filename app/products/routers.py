@@ -818,6 +818,7 @@ async def add_new_product(
     productPersonalisationOptions: Optional[str] = Form(None),
     productSeoTitle:       Optional[str]    = Form(None),
     productSeoDescription: Optional[str]    = Form(None),
+    productFeatured:       Optional[str]    = Form(None),
     user=Depends(JWTBearer()),
     session: Session = Depends(get_db),
 ):
@@ -867,6 +868,7 @@ async def add_new_product(
         personalisation_options=json.loads(productPersonalisationOptions) if productPersonalisationOptions else [],
         seo_title=productSeoTitle or None,
         seo_description=productSeoDescription or None,
+        is_featured=(productFeatured == "true"),
     )
     _sync_product_subcategory(new_product, session)
 
@@ -991,6 +993,7 @@ async def update_product(
     productPersonalisationOptions: Optional[str] = Form(None),
     productSeoTitle:       Optional[str]    = Form(None),
     productSeoDescription: Optional[str]    = Form(None),
+    productFeatured:       Optional[str]    = Form(None),
     user=Depends(JWTBearer()),
     session: Session = Depends(get_db),
 ):
@@ -1056,6 +1059,8 @@ async def update_product(
         product.seo_title = productSeoTitle or None
     if productSeoDescription is not None:
         product.seo_description = productSeoDescription or None
+    if productFeatured is not None:
+        product.is_featured = productFeatured == "true"
 
     _sync_product_subcategory(product, session)
 
