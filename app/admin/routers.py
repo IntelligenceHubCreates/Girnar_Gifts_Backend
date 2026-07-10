@@ -26,7 +26,7 @@ from app.users.utils import JWTBearer
 # ── Models ────────────────────────────────────────────────────────
 # Import with graceful fallback so the file never crashes on partial setups.
 
-from app.users.models import Users  # always present
+from app.users.models import Users, UserAddress  # always present
 
 try:
     from app.orders.models import Order, OrderItem
@@ -453,6 +453,125 @@ async def list_customers(
         "page":       (skip // limit) + 1,
         "limit":      limit,
     }
+
+
+@admin_router.get("/customers/{customer_id}")
+async def get_customer(
+    customer_id: str,
+    user=Depends(JWTBearer()),
+    session: Session = Depends(get_db),
+):
+    _require_admin(user)
+
+    try:
+        cid = UUID(customer_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid customer id")
+
+    customer = session.query(Users).filter(Users.id == cid).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    orders_list: list[dict] = []
+    total_orders    = 0
+    total_spent     = 0.0
+    last_order_date = None
+    if HAS_ORDERS:
+        orders = (
+            session.query(Order)
+            .options(selectinload(Order.order_items))
+            .filter(Order.user_id == cid)
+            .order_by(Order.created_at.desc())
+            .all()
+        )
+        total_orders = len(orders)
+        total_spent  = float(sum((o.total_amount or 0) for o in orders))
+        if orders and orders[0].created_at:
+            last_order_date = orders[0].created_at.isoformat()
+        orders_list = [
+            {
+                "id":           str(o.id),
+                "order_number": str(o.id)[:8].upper(),
+                "status":       o.status or "pending",
+                "total_amount": float(o.total_amount or 0),
+                "created_at":   o.created_at.isoformat() if o.created_at else None,
+                "item_count":   len(o.order_items or []),
+            }
+            for o in orders
+        ]
+
+    addresses = (
+        session.query(UserAddress)
+        .filter(UserAddress.user_id == cid)
+        .order_by(UserAddress.is_default.desc(), UserAddress.created_at.desc())
+        .all()
+    )
+    addresses_list = [
+        {
+            "id":            str(a.id),
+            "full_name":     a.full_name or "",
+            "phone":         a.phone or "",
+            "address_line1": a.address_line1 or "",
+            "address_line2": a.address_line2 or "",
+            "city":          a.city or "",
+            "state":         a.state or "",
+            "postal_code":   a.postal_code or "",
+            "country":       a.country or "",
+            "address_type":  a.address_type or "home",
+            "is_default":    bool(a.is_default),
+        }
+        for a in addresses
+    ]
+
+    return {
+        "id":              str(customer.id),
+        "name":            customer.name or "",
+        "email":           customer.email or "",
+        "phone":           customer.phone or "",
+        "city":            addresses_list[0]["city"] if addresses_list else "",
+        "role":            customer.role,
+        "confirmed":       bool(customer.confirmed),
+        "is_active":       bool(getattr(customer, "is_active", True)),
+        "created_at":      customer.created_at.isoformat() if customer.created_at else "",
+        "profile_image":   customer.profile_image,
+        "total_orders":    total_orders,
+        "total_spent":     total_spent,
+        "last_order_date": last_order_date,
+        "orders":          orders_list,
+        "addresses":       addresses_list,
+    }
+
+
+class CustomerUpdate(BaseModel):
+    is_active: Optional[bool] = None
+
+
+@admin_router.put("/customers/{customer_id}")
+async def update_customer(
+    customer_id: str,
+    body: CustomerUpdate,
+    user=Depends(JWTBearer()),
+    session: Session = Depends(get_db),
+):
+    _require_admin(user)
+
+    try:
+        cid = UUID(customer_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid customer id")
+
+    customer = session.query(Users).filter(Users.id == cid).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    if body.is_active is not None:
+        if customer.role == 1:
+            raise HTTPException(status_code=403, detail="Cannot deactivate an admin account")
+        customer.is_active = body.is_active
+
+    session.commit()
+    session.refresh(customer)
+    return {"id": str(customer.id), "is_active": bool(customer.is_active)}
 
 
 @admin_router.delete("/customers/{customer_id}", status_code=204)
