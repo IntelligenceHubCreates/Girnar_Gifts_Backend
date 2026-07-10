@@ -148,8 +148,8 @@ async def root():
 
 @server.get("/health")
 async def health(db: Session = Depends(get_db)):
-    # Real DB ping, not just "process is alive" - Render's healthCheckPath
-    # gates zero-downtime deploys and free-tier wake-from-sleep on this.
+    # Real DB ping, not just "process is alive" - the load balancer's
+    # health check gates deploys and instance replacement on this.
     db.execute(text("SELECT 1"))
     return {"status": "ok"}
 
