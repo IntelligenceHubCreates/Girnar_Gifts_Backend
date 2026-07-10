@@ -26,7 +26,11 @@ from app.users.utils import JWTBearer
 # ── Models ────────────────────────────────────────────────────────
 # Import with graceful fallback so the file never crashes on partial setups.
 
-from app.users.models import Users, UserAddress  # always present
+from app.users.models import Users, UserAddress, UserTokens  # always present
+from app.cart.models import Cart          # always present (Users.cart relationship)
+from app.favorite.models import Favorite  # always present (Users.favorites relationship)
+from app.rating.models import Rating      # always present (Users.ratings relationship)
+from app.notifications.models import Notification, ShipmentNotificationLog  # always present
 
 try:
     from app.orders.models import Order, OrderItem
@@ -582,11 +586,39 @@ async def delete_customer(
 ):
     _require_admin(user)
 
-    customer = session.query(Users).filter(Users.id == UUID(customer_id)).first()
+    try:
+        cid = UUID(customer_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid customer id")
+
+    customer = session.query(Users).filter(Users.id == cid).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     if customer.role == 1:
         raise HTTPException(status_code=403, detail="Cannot delete an admin account")
+
+    # Orders (and shipments/returns, which only ever exist attached to an
+    # order) are financial/audit records - refuse to cascade through them.
+    # Every OTHER users.id foreign key in the schema has no ON DELETE rule
+    # at the DB level, so a plain session.delete(customer) 500s the moment
+    # any of them exist - which is nearly always true (even a brand-new
+    # signup gets a cart row and a welcome notification). Clear those out
+    # explicitly instead of relying on DB-level cascades that don't exist.
+    if HAS_ORDERS and session.query(Order.id).filter(Order.user_id == cid).first():
+        raise HTTPException(
+            status_code=409,
+            detail="This customer has order history and cannot be deleted. Deactivate the account instead.",
+        )
+
+    for cart in session.query(Cart).filter(Cart.user_id == cid).all():
+        session.delete(cart)  # cascades to cart_items via the ORM relationship
+    session.query(UserTokens).filter(UserTokens.user_id == cid).delete(synchronize_session=False)
+    session.query(UserAddress).filter(UserAddress.user_id == cid).delete(synchronize_session=False)
+    session.query(Favorite).filter(Favorite.user_id == cid).delete(synchronize_session=False)
+    session.query(Rating).filter(Rating.user_id == cid).delete(synchronize_session=False)
+    session.query(Notification).filter(Notification.user_id == cid).delete(synchronize_session=False)
+    session.query(ShipmentNotificationLog).filter(ShipmentNotificationLog.user_id == cid).delete(synchronize_session=False)
+
     session.delete(customer)
     session.commit()
 
